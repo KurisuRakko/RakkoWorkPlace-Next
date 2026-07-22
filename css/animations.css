@@ -121,7 +121,7 @@
 }
 
 /* 应用动画类 */
-body.animations-enabled .boot-loading-ring svg {
+body.animations-enabled .boot-loading-ring {
     animation: boot-ring-spin 1.2s linear infinite;
 }
 

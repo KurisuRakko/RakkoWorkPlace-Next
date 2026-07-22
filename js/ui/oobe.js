@@ -1654,6 +1654,9 @@ const OOBE = {
 
         this.preloadingPromise = (async () => {
             try {
+                // Let the boot-to-OOBE fade and the first welcome frames finish
+                // before starting optional cache traffic.
+                await new Promise((resolve) => setTimeout(resolve, 1000));
                 if (State && typeof State.ensureFSIntegrity === 'function') {
                     State.ensureFSIntegrity();
                 }

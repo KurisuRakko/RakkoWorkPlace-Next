@@ -312,9 +312,17 @@ const Desktop = {
     },
 
     async updateWallpaper() {
-        const wallpaperSetting = State.settings.wallpaperDesktop;
+        const wallpaperSetting = State.settings.wallpaperDesktop || 'Theme/Picture/Fluent-2.png';
         const requestId = (this._wallpaperRequestId || 0) + 1;
         this._wallpaperRequestId = requestId;
+        const previewWallpaper = typeof BootScreen !== 'undefined'
+            && typeof BootScreen.getOobeWallpaperPreview === 'function'
+            ? BootScreen.getOobeWallpaperPreview(wallpaperSetting)
+            : wallpaperSetting;
+        if (previewWallpaper && previewWallpaper !== wallpaperSetting) {
+            this.wallpaperElement.style.backgroundImage = `url("${String(previewWallpaper).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}")`;
+            this._currentWallpaper = previewWallpaper;
+        }
         const wallpaper = typeof State.resolveWallpaper === 'function'
             ? await State.resolveWallpaper('desktop')
             : wallpaperSetting;

@@ -192,49 +192,93 @@ document.addEventListener('DOMContentLoaded', () => {
     // 监听电源操作
     State.on('powerAction', handlePowerAction);
 
-    // 初始化所有模块
-    initModules();
+    // 只初始化开机过渡必需的模块，让加载动画尽快获得首个稳定帧。
+    initBootCriticalModules();
 
-    // 开始系统流程
+    // 开始系统流程；其余模块会在后续绘制帧之间分批初始化。
     startSystem();
+    initModulesAfterBootPaint().catch((error) => {
+        console.error('[Startup] Deferred module initialization failed:', error);
+    });
 });
 
 /**
- * 初始化所有模块
+ * 初始化开机、锁屏和直接进入桌面所需的最小模块集合。
  */
-function initModules() {
-    initNativeImageDragGuard();
-
-    // UI模块
+function initBootCriticalModules() {
     BootScreen.init();
-    if (typeof OOBE !== 'undefined' && typeof OOBE.init === 'function') {
-        OOBE.init();
-    }
     LockScreen.init();
     LoginScreen.init();
     Desktop.init();
-    Taskbar.init();
-    StartMenu.init();
-    ControlCenter.init();
-    NotificationCenter.init();
-    if (typeof ClockReminderService !== 'undefined') { ClockReminderService.init(); }
-    WindowManager.init();
-    if (typeof CrossAppDrag !== 'undefined') { CrossAppDrag.init(); }
-    if (typeof DeveloperCenterController !== 'undefined') { DeveloperCenterController.init(); }
-    if (typeof FavoriteSites !== 'undefined') { FavoriteSites.init(); }
-    if (typeof TaskView !== 'undefined') { TaskView.init(); }
-    if (typeof Widgets !== 'undefined') { Widgets.init(); }
-    Fingo.init();
-    initGlobalShortcuts();
-    initGlobalFileDragOverlay();
+}
 
-    // Fingo 任务栏按钮
-    const fingoBtn = document.getElementById('fingo-btn');
-    if (fingoBtn) {
-        fingoBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            Fingo.toggle();
-        });
+/**
+ * 等到浏览器完成一次绘制后再继续，避免多个初始化长任务挤在同一帧。
+ */
+function yieldUntilAfterPaint() {
+    return new Promise((resolve) => {
+        if (typeof requestAnimationFrame !== 'function') {
+            setTimeout(resolve, 0);
+            return;
+        }
+        requestAnimationFrame(() => setTimeout(resolve, 0));
+    });
+}
+
+/**
+ * 非开机关键模块逐帧初始化。单个模块出现问题时继续启动其余模块。
+ */
+async function initModulesAfterBootPaint() {
+    const initializers = [
+        ['NativeImageDragGuard', () => initNativeImageDragGuard()],
+        ['OOBE', () => {
+            if (typeof OOBE !== 'undefined' && typeof OOBE.init === 'function') OOBE.init();
+        }],
+        ['Taskbar', () => Taskbar.init()],
+        ['StartMenu', () => StartMenu.init()],
+        ['ControlCenter', () => ControlCenter.init()],
+        ['NotificationCenter', () => NotificationCenter.init()],
+        ['ClockReminderService', () => {
+            if (typeof ClockReminderService !== 'undefined') ClockReminderService.init();
+        }],
+        ['WindowManager', () => WindowManager.init()],
+        ['CrossAppDrag', () => {
+            if (typeof CrossAppDrag !== 'undefined') CrossAppDrag.init();
+        }],
+        ['DeveloperCenterController', () => {
+            if (typeof DeveloperCenterController !== 'undefined') DeveloperCenterController.init();
+        }],
+        ['FavoriteSites', () => {
+            if (typeof FavoriteSites !== 'undefined') FavoriteSites.init();
+        }],
+        ['TaskView', () => {
+            if (typeof TaskView !== 'undefined') TaskView.init();
+        }],
+        ['Widgets', () => {
+            if (typeof Widgets !== 'undefined') Widgets.init();
+        }],
+        ['Fingo', () => Fingo.init()],
+        ['GlobalShortcuts', () => initGlobalShortcuts()],
+        ['GlobalFileDragOverlay', () => initGlobalFileDragOverlay()],
+        ['FingoTaskbarButton', () => {
+            const fingoBtn = document.getElementById('fingo-btn');
+            if (fingoBtn) {
+                fingoBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    Fingo.toggle();
+                });
+            }
+        }]
+    ];
+
+    await yieldUntilAfterPaint();
+    for (const [name, initialize] of initializers) {
+        try {
+            initialize();
+        } catch (error) {
+            console.error(`[Startup] ${name} initialization failed:`, error);
+        }
+        await yieldUntilAfterPaint();
     }
 
     console.log('✓ 所有模块已初始化');

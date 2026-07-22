@@ -73,9 +73,25 @@ const LockScreen = {
     async updateWallpaper() {
         const requestId = (this._wallpaperRequestId || 0) + 1;
         this._wallpaperRequestId = requestId;
+        const wallpaperSetting = State.settings.wallpaperLock || 'Theme/Picture/Fluent-1.png';
+        const preparedWallpaper = typeof BootScreen !== 'undefined'
+            && typeof BootScreen.getPreparedLockWallpaper === 'function'
+            ? BootScreen.getPreparedLockWallpaper(wallpaperSetting)
+            : '';
+        if (preparedWallpaper) {
+            this.wallpaperElement.style.backgroundImage = `url('${preparedWallpaper}')`;
+            return;
+        }
+        const previewWallpaper = typeof BootScreen !== 'undefined'
+            && typeof BootScreen.getOobeWallpaperPreview === 'function'
+            ? BootScreen.getOobeWallpaperPreview(wallpaperSetting)
+            : wallpaperSetting;
+        if (previewWallpaper && previewWallpaper !== wallpaperSetting) {
+            this.wallpaperElement.style.backgroundImage = `url('${previewWallpaper}')`;
+        }
         const wallpaper = typeof State.resolveWallpaper === 'function'
             ? await State.resolveWallpaper('lock')
-            : State.settings.wallpaperLock;
+            : wallpaperSetting;
         if (this._wallpaperRequestId !== requestId) return;
         this.wallpaperElement.style.backgroundImage = `url('${wallpaper}')`;
     },

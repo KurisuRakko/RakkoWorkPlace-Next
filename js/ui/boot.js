@@ -7,8 +7,10 @@ const BootScreen = {
     CACHE_KEY: 'fluentos.assets_cached',
     RESOURCE_CACHE_NAME: 'fluentos-resource-pack-v1',
     RESOURCE_META_KEY: 'fluentos.resource-manifest.v1',
-    RETURNING_MIN_DURATION: 800,
-    RETURNING_MAX_DURATION: 1800,
+    RETURNING_MIN_DURATION: 700,
+    RETURNING_MAX_DURATION: 4000,
+    RETURNING_FADE_DURATION: 450,
+    RETURNING_BACKGROUND_DELAY: 600,
     FIRST_DURATION: 20000,
     MIN_FIRST_WAIT: 6000,
     FIRST_HINT_AT: 8000,
@@ -21,6 +23,8 @@ const BootScreen = {
     _hintSwitchTimer: null,
     _projectRootUrl: null,
     _resourceMetadata: null,
+    _preparedLockWallpaperSetting: '',
+    _preparedLockWallpaperUrl: '',
     _bootRunId: 0,
     _transitionedRunId: 0,
     _startupSoundRunId: 0,
@@ -62,22 +66,47 @@ const BootScreen = {
 
     async _bootReturningUser(runId) {
         const wait = (duration) => new Promise((resolve) => setTimeout(resolve, duration));
-        const pack = this._buildPriorityAssets();
-        const criticalReady = (async () => {
-            await this._pruneRemovedIncrementalAssets();
-            await this._preloadGroupIncremental(pack.lockWallpapers, 4);
-            await this._warmCachedGroup(pack.lockWallpapers, 2);
-        })().catch(() => {});
-
-        // Keep the logo visible briefly, but never hold a returning user for a fixed 4 seconds.
+        // Decode the selected lock wallpaper immediately. Returning boot lasts at
+        // least 700ms, then continues as soon as decode succeeds, with a hard 4s cap.
+        const lockWallpaperReady = new Promise((resolve) => {
+            this._prepareReturningLockWallpaper().then((ready) => {
+                if (ready) resolve(true);
+            }).catch(() => {});
+        });
         await Promise.race([
-            Promise.all([wait(this.RETURNING_MIN_DURATION), criticalReady]),
+            Promise.all([wait(this.RETURNING_MIN_DURATION), lockWallpaperReady]),
             wait(this.RETURNING_MAX_DURATION)
         ]);
 
         if (runId !== this._bootRunId) return;
-        this.fadeToLock(runId);
-        this._preloadAndWarmResourcePackInBackground({ skipLockWallpapers: true }).catch(() => {});
+        this.fadeToLock(runId, this.RETURNING_FADE_DURATION);
+        setTimeout(() => {
+            if (runId !== this._bootRunId) return;
+            this._preloadAndWarmResourcePackInBackground().catch(() => {});
+        }, this.RETURNING_BACKGROUND_DELAY);
+    },
+
+    async _prepareReturningLockWallpaper() {
+        const initialSetting = State?.settings?.wallpaperLock || 'Theme/Picture/Fluent-1.png';
+        this._preparedLockWallpaperSetting = '';
+        this._preparedLockWallpaperUrl = '';
+        try {
+            const wallpaperUrl = typeof State.resolveWallpaper === 'function'
+                ? await State.resolveWallpaper('lock')
+                : initialSetting;
+            if (!wallpaperUrl || !(await this._decodeImageUrl(wallpaperUrl))) return false;
+            this._preparedLockWallpaperSetting = State?.settings?.wallpaperLock || initialSetting;
+            this._preparedLockWallpaperUrl = wallpaperUrl;
+            return true;
+        } catch (_) {
+            return false;
+        }
+    },
+
+    getPreparedLockWallpaper(setting) {
+        return String(setting || '') === String(this._preparedLockWallpaperSetting || '')
+            ? this._preparedLockWallpaperUrl
+            : '';
     },
 
     async _bootIntoOobeWithEssentialAssets(runId) {
@@ -255,19 +284,10 @@ const BootScreen = {
         const lockWallpaper = settings.wallpaperLock || 'Theme/Picture/Fluent-1.png';
         const desktopWallpaper = settings.wallpaperDesktop || 'Theme/Picture/Fluent-2.png';
 
-        const lockWallpapers = this._uniqAssets([
-            lockWallpaper,
-            'Theme/Picture/Fluent-1.png'
-        ]);
-
-        const desktopWallpapers = this._uniqAssets([
-            desktopWallpaper,
-            'Theme/Picture/Fluent-2.png',
-            'Theme/Picture/Fluent-3.jpg',
-            'Theme/Picture/Fluent-4.jpg',
-            'Theme/Picture/Fluent-5.png',
-            'Theme/Picture/Fluent-6.jpg'
-        ]);
+        // Normal startup only prepares the wallpapers that are actually selected.
+        // The built-in defaults above are used solely when a setting is missing.
+        const lockWallpapers = this._uniqAssets([lockWallpaper]);
+        const desktopWallpapers = this._uniqAssets([desktopWallpaper]);
 
         const profileAvatarDefaults = [
             'Theme/Profile_img/UserAva.jpg',
@@ -298,7 +318,7 @@ const BootScreen = {
         return { lockWallpapers, desktopWallpapers, avatars, icons };
     },
 
-    _buildOobeEssentialAssets() {
+    _buildOobeFullAssets() {
         const core = this._uniqAssets([
             'index.html',
             'css/main.css',
@@ -335,6 +355,29 @@ const BootScreen = {
         };
     },
 
+    _buildOobeEssentialAssets() {
+        const full = this._buildOobeFullAssets();
+        const settings = State?.settings || {};
+        const lockPreview = this.getOobeWallpaperPreview(
+            settings.wallpaperLock || 'Theme/Picture/Fluent-1.png'
+        );
+
+        // The welcome screen only needs its logo and one lightweight background.
+        // Everything used by later OOBE steps is intentionally deferred so the
+        // startup animation is not competing with cache writes and image decode.
+        return {
+            core: [],
+            wallpapers: this._uniqAssets([
+                lockPreview,
+                'Theme/Preload/OOBE/wallpapers/Fluent-1.jpg',
+                'Theme/Qingshan_lake/00_complete_scene_transparent_no_credit.png'
+            ]),
+            avatars: [],
+            icons: full.icons,
+            illustrations: []
+        };
+    },
+
     _buildOobeSupplementalAssets() {
         const appIcons = Array.isArray(window.Desktop?.apps)
             ? Desktop.apps.map((app) => app.icon).filter(Boolean)
@@ -359,14 +402,21 @@ const BootScreen = {
 
     _buildOobeDeferredAssets() {
         const pack = this._buildPriorityAssets();
+        const full = this._buildOobeFullAssets();
         const essential = this._buildOobeEssentialAssets();
         const essentialIcons = new Set(essential.icons);
+        const essentialWallpapers = new Set(essential.wallpapers);
+        const supplementalIcons = new Set(this._buildOobeSupplementalAssets());
         const aiScripts = this._uniqAssets([
             'js/core/fingo-data.js',
             'js/core/fingo.js'
         ]);
         return {
-            icons: pack.icons.filter((src) => !essentialIcons.has(src)),
+            core: full.core,
+            wallpapers: full.wallpapers.filter((src) => !essentialWallpapers.has(src)),
+            avatars: full.avatars,
+            illustrations: full.illustrations,
+            icons: pack.icons.filter((src) => !essentialIcons.has(src) && !supplementalIcons.has(src)),
             aiScripts
         };
     },
@@ -517,10 +567,9 @@ const BootScreen = {
         this._saveResourceMetadata();
     },
 
-    async _decodeImageAsset(src) {
+    _decodeImageUrl(src) {
         return new Promise((resolve) => {
-            const assetUrl = this._assetUrl(src);
-            if (!assetUrl) {
+            if (!src) {
                 resolve(false);
                 return;
             }
@@ -535,7 +584,7 @@ const BootScreen = {
             img.decoding = 'async';
             img.onload = () => finish(true);
             img.onerror = () => finish(false);
-            img.src = assetUrl;
+            img.src = src;
 
             if (typeof img.decode === 'function') {
                 img.decode().then(() => finish(true)).catch(() => {
@@ -543,6 +592,11 @@ const BootScreen = {
                 });
             }
         });
+    },
+
+    async _decodeImageAsset(src) {
+        const assetUrl = this._assetUrl(src);
+        return assetUrl ? this._decodeImageUrl(assetUrl) : false;
     },
 
     async _decodeCachedImageAsset(src) {
@@ -694,15 +748,15 @@ const BootScreen = {
     async _preloadOobeSupplementalResources() {
         const icons = this._buildOobeSupplementalAssets();
         await this._preloadOobeGroupWithResult(icons, 8);
-        await this._warmRenderGroup(icons, 6);
     },
 
     async _preloadTipsGettingStartedImages() {
         const images = typeof TipsApp !== 'undefined' && typeof TipsApp.getGettingStartedImageSources === 'function'
             ? this._uniqAssets(TipsApp.getGettingStartedImageSources())
             : [];
-        await this._preloadGroup(images, 3);
-        await this._warmRenderGroup(images, 3);
+        // Tips artwork is large and invisible during boot/OOBE. Cache it gently,
+        // but do not decode every image up front on the main startup path.
+        await this._preloadGroup(images, 1);
     },
 
     async _preloadOobeDeferredResources() {
@@ -717,11 +771,15 @@ const BootScreen = {
                 // groups from being attempted.
             }
         }
-        // Warm the first Tips experience before continuing with optional assets.
-        await this._preloadTipsGettingStartedImages();
+        // Finish OOBE's own later-step assets before unrelated, much larger Tips art.
+        await this._preloadOobeGroupWithResult(pack.core, 4);
+        await this._preloadOobeGroupWithResult(pack.illustrations, 2);
+        await this._preloadOobeGroupWithResult(pack.wallpapers, 2);
+        await this._preloadOobeGroupWithResult(pack.avatars, 2);
         await this._preloadOobeSupplementalResources();
-        await this._preloadGroup(pack.icons, 8);             // OOBE 中继续加载其余图标
-        await this._preloadGroup(pack.aiScripts, 2);         // OOBE 中缓存 AI 组件脚本
+        await this._preloadGroup(pack.icons, 4);             // OOBE 中继续加载其余图标
+        await this._preloadGroup(pack.aiScripts, 1);         // OOBE 中缓存 AI 组件脚本
+        await this._preloadTipsGettingStartedImages();
     },
     _playStartupAfterEnter(runId, targetView) {
         const play = () => {
@@ -736,9 +794,12 @@ const BootScreen = {
         else setTimeout(play, 0);
     },
 
-    fadeToLock(runId = this._bootRunId) {
+    fadeToLock(runId = this._bootRunId, duration = 800) {
         if (runId !== this._bootRunId || this._transitionedRunId === runId) return;
         this._transitionedRunId = runId;
+        const transitionDuration = Number.isFinite(Number(duration))
+            ? Math.max(0, Number(duration))
+            : 800;
         const shouldGoOobe = typeof OOBE !== 'undefined'
             && typeof OOBE.shouldShowOnFirstLaunch === 'function'
             && OOBE.shouldShowOnFirstLaunch();
@@ -768,9 +829,9 @@ const BootScreen = {
         targetEl.style.opacity = '0';
         targetEl.classList.remove('hidden');
 
-        this.element.style.transition = 'opacity 0.8s ease';
+        this.element.style.transition = `opacity ${transitionDuration}ms ease`;
         this.element.style.opacity = '0';
-        targetEl.style.transition = 'opacity 0.8s ease';
+        targetEl.style.transition = `opacity ${transitionDuration}ms ease`;
         targetEl.style.opacity = '1';
 
         setTimeout(() => {
@@ -782,7 +843,7 @@ const BootScreen = {
             targetEl.style.opacity = '';
             State.view = targetView;
             this._playStartupAfterEnter(runId, targetView);
-        }, 800);
+        }, transitionDuration);
     },
 
     hide() {
