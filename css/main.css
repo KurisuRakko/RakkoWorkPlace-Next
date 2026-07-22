@@ -737,10 +737,12 @@ html,
 }
 
 .desktop-icon {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    display: grid;
+    grid-template-rows: 52px 15px;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 6px;
+    align-content: center;
+    justify-items: center;
     width: 90px; /* 固定宽度 */
     height: 90px; /* 固定高度，保持正方形 */
     padding: 8px;
@@ -760,6 +762,7 @@ html,
     background: rgba(255, 255, 255, 0.15);
     outline: none;
     box-shadow: none;
+    z-index: 2;
 }
 
 .desktop-icon:focus,
@@ -772,7 +775,8 @@ html,
 .desktop-icon img {
     width: 44px;
     height: 44px;
-    margin-bottom: 6px;
+    margin: 0;
+    align-self: center;
     pointer-events: none;
     flex-shrink: 0; /* 防止图标被压缩 */
 }
@@ -787,19 +791,32 @@ html,
 }
 
 .desktop-icon span {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    height: 1.2em;
+    max-height: 1.2em;
     font-size: 12px;
     color: white;
     text-align: center;
-    word-break: break-word;
     line-height: 1.2;
-    max-height: 28px; /* 限制文字高度，最多显示2行 */
+    white-space: nowrap;
     overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2; /* 最多显示2行 */
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
     transition: text-shadow 0.3s ease;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8), 0 0 4px rgba(0, 0, 0, 0.35);
+}
+
+/* 选中后仅让标题从固定的单行槽向下展开；网格第一行尺寸不变，
+   因此完整文件名不会把文件或 App 图标向上挤。 */
+.desktop-icon.selected span {
+    height: auto;
+    max-height: none;
+    white-space: normal;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    text-overflow: clip;
 }
 
 /* 亮色壁纸时添加阴影效果 */
@@ -1120,6 +1137,40 @@ body.animations-enabled .taskbar-center {
     z-index: 2;
 }
 
+.taskbar-app-stack-layer {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 25px;
+    height: 25px;
+    display: none;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    background: color-mix(in srgb, var(--bg-primary) 88%, var(--accent) 12%);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.taskbar-app.taskbar-app-multi .taskbar-app-stack-layer {
+    display: block;
+}
+
+.taskbar-app-stack-back {
+    transform: translate(-36%, -64%);
+    opacity: 0.7;
+}
+
+.taskbar-app-stack-front {
+    transform: translate(-44%, -56%);
+    opacity: 0.9;
+}
+
+.dark-mode .taskbar-app-stack-layer {
+    border-color: rgba(255, 255, 255, 0.28);
+    box-shadow: 0 2px 7px rgba(0, 0, 0, 0.42);
+}
+
 .taskbar-app::before {
     content: '';
     position: absolute;
@@ -1264,6 +1315,31 @@ body.button-glow-disabled .taskbar-app.taskbar-app-minimized::after {
     pointer-events: auto;
 }
 
+.taskbar-window-preview-list {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    max-width: calc(100vw - 28px);
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+.taskbar-window-preview-card {
+    flex: 0 0 auto;
+    padding: 5px;
+    border-radius: 10px;
+    transition: background 120ms ease, transform 120ms ease;
+    cursor: default;
+}
+
+.taskbar-window-preview-card:hover {
+    background: rgba(var(--accent-rgb, 0, 120, 212), 0.12);
+}
+
+.taskbar-window-preview-card:active {
+    transform: scale(0.985);
+}
+
 .dark-mode .taskbar-window-preview {
     background: rgba(34, 34, 34, 0.84);
     border-color: rgba(255, 255, 255, 0.14);
@@ -1360,6 +1436,73 @@ body.button-glow-disabled .taskbar-app.taskbar-app-minimized::after {
 .taskbar-window-preview-clone .window-snap-layout-menu {
     display: none !important;
 }
+
+.cross-app-drop-preview {
+    position: absolute;
+    inset: 0;
+    z-index: 1200;
+    display: grid;
+    place-items: center;
+    padding: 28px;
+    border: 2px solid rgba(var(--accent-rgb, 0, 120, 212), 0.8);
+    border-radius: inherit;
+    background: rgba(var(--accent-rgb, 0, 120, 212), 0.1);
+    backdrop-filter: blur(10px) saturate(125%);
+    -webkit-backdrop-filter: blur(10px) saturate(125%);
+    opacity: 0;
+    transform: scale(0.985);
+    pointer-events: none;
+    transition: opacity 130ms ease, transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cross-app-drop-preview.show {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.cross-app-drop-preview-card {
+    min-width: min(320px, calc(100% - 32px));
+    max-width: 440px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 18px 22px;
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    border-radius: 18px;
+    background: rgba(250, 250, 250, 0.88);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
+    color: var(--text-primary);
+}
+
+.dark-mode .cross-app-drop-preview-card {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(38, 38, 38, 0.9);
+    box-shadow: 0 22px 56px rgba(0, 0, 0, 0.46);
+}
+
+.cross-app-drop-preview-card > img {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+}
+
+.cross-app-drop-preview-card > span {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+}
+
+.cross-app-drop-preview-card strong {
+    font-size: 15px;
+    line-height: 1.25;
+}
+
+.cross-app-drop-preview-card small {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
 .taskbar-notification {
     width: auto !important;
     padding: 0 12px !important;
@@ -1939,35 +2082,9 @@ body.button-glow-disabled .taskbar-app.taskbar-app-minimized::after {
     height: 20px;
 }
 
-.control-slider input[type="range"] {
+.control-slider .fluent-slider {
     flex: 1;
-    height: 4px;
-    background: var(--border-color);
-    border-radius: 2px;
-    outline: none;
-    -webkit-appearance: none;
-    appearance: none;
-}
-
-.control-slider input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    background: var(--accent);
-    border-radius: 50%;
-    cursor: pointer;
-    box-shadow: var(--shadow-sm);
-}
-
-.control-slider input[type="range"]::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    background: var(--accent);
-    border-radius: 50%;
-    cursor: pointer;
-    border: none;
-    box-shadow: var(--shadow-sm);
+    min-width: 0;
 }
 
 .control-slider span {
@@ -2822,26 +2939,49 @@ body.desktop-unblur .desktop-wallpaper {
 body.desktop-unblur .desktop-icons {
     filter: none;
     opacity: 1;
-    transition: filter 600ms cubic-bezier(0.22, 0.61, 0.36, 1),
-                opacity 600ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    transition: filter 680ms cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 680ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 body.desktop-unblur #desktop-screen {
-    transition: opacity 600ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    transition: opacity 560ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.desktop-blur-in .taskbar,
+body.desktop-blur-in #desktop-widgets-layer {
+    filter: blur(16px) brightness(0.72);
+    opacity: 0.24;
+}
+
+body.desktop-unblur .taskbar,
+body.desktop-unblur #desktop-widgets-layer {
+    filter: none;
+    opacity: 1;
+    transition: filter 680ms cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 680ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 body.desktop-to-lock-blur .desktop-wallpaper {
     filter: blur(35px) brightness(0.65);
     transform: scale(1.1);
-    transition: filter 350ms cubic-bezier(0.22, 0.61, 0.36, 1),
-                transform 350ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    transition: filter 460ms cubic-bezier(0.4, 0, 0.2, 1),
+                transform 460ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body.desktop-to-lock-blur .desktop-icons {
     filter: blur(18px);
     opacity: 0.3;
-    transition: filter 350ms cubic-bezier(0.22, 0.61, 0.36, 1),
-                opacity 350ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    transition: filter 460ms cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 460ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.desktop-to-lock-blur .window,
+body.desktop-to-lock-blur .taskbar,
+body.desktop-to-lock-blur #desktop-widgets-layer {
+    filter: blur(16px) brightness(0.72);
+    opacity: 0.24;
+    transition: filter 460ms cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 460ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body.lock-blur-in .lock-wallpaper {
@@ -2851,6 +2991,7 @@ body.lock-blur-in .lock-wallpaper {
 
 body.lock-blur-in .lock-time-container,
 body.lock-blur-in .lock-hint,
+body.lock-blur-in .lock-notifications,
 body.lock-blur-in #lock-widgets-layer {
     filter: blur(20px);
     opacity: 0.2;
@@ -2859,17 +3000,52 @@ body.lock-blur-in #lock-widgets-layer {
 body.lock-unblur .lock-wallpaper {
     filter: none;
     transform: scale(1);
-    transition: filter 600ms cubic-bezier(0.22, 0.61, 0.36, 1),
-                transform 600ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    transition: filter 680ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 680ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 body.lock-unblur .lock-time-container,
 body.lock-unblur .lock-hint,
+body.lock-unblur .lock-notifications,
 body.lock-unblur #lock-widgets-layer {
     filter: none;
     opacity: 1;
-    transition: filter 600ms cubic-bezier(0.22, 0.61, 0.36, 1),
-                opacity 600ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    transition: filter 680ms cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 680ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 小组件抽屉从锁屏编辑返回桌面时，反向复用同一套景深曲线。 */
+body.lock-to-desktop-blur .lock-wallpaper {
+    filter: blur(35px) brightness(0.65);
+    transform: scale(1.1);
+    transition: filter 460ms cubic-bezier(0.4, 0, 0.2, 1),
+                transform 460ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.lock-to-desktop-blur .lock-time-container,
+body.lock-to-desktop-blur .lock-hint,
+body.lock-to-desktop-blur .lock-notifications,
+body.lock-to-desktop-blur #lock-widgets-layer {
+    filter: blur(20px) brightness(0.78);
+    opacity: 0.2;
+    transition: filter 460ms cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 460ms cubic-bezier(0.4, 0, 0.2, 1),
+                transform 460ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.lock-to-desktop-blur .lock-time-container,
+body.lock-to-desktop-blur .lock-notifications,
+body.lock-to-desktop-blur #lock-widgets-layer {
+    transform: scale(0.96);
+}
+
+body.lock-to-desktop-blur .lock-hint {
+    transform: translateX(-50%) scale(0.96) translateY(8px);
+}
+
+body.lock-desktop-depth-transition #desktop-screen,
+body.lock-desktop-depth-transition #lock-screen {
+    will-change: opacity;
 }
 
 /* ============ 窗口全屏时壁纸景深放大+非线性模糊效果 ============ */

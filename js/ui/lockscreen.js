@@ -43,6 +43,7 @@ const LockScreen = {
         this.updateWallpaper();
         
         // 启动时间更新
+        if (this.timeInterval) clearInterval(this.timeInterval);
         this.timeInterval = setInterval(() => this.updateTime(), 1000);
     },
 

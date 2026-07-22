@@ -237,8 +237,19 @@ const State = {
     ensureSettingsDefaults() {
         this.settings = this.settings || {};
         let changed = false;
+        if (this.settings.enableSystemInteractionAudio === undefined
+            && this.settings.enableSpatialWindowAudio !== undefined) {
+            this.settings.enableSystemInteractionAudio = this.settings.enableSpatialWindowAudio === true;
+            changed = true;
+        }
+        if (Object.prototype.hasOwnProperty.call(this.settings, 'enableSpatialWindowAudio')) {
+            delete this.settings.enableSpatialWindowAudio;
+            changed = true;
+        }
         const processManagerRegistrationVersion = Number(this.settings.processManagerRegistrationVersion || 0);
         const needsProcessManagerRegistration = processManagerRegistrationVersion < 2;
+        const externalFileImportDefaultVersion = Number(this.settings.externalFileImportDefaultVersion || 0);
+        const needsExternalFileImportDefaultMigration = externalFileImportDefaultVersion < 1;
 
         const defaults = {
             strictCspEnabled: false,
@@ -251,7 +262,11 @@ const State = {
             fingoApiStorageType: 'none',
             fingoApiSaveMode: 'temporary',
             autoEnterFullscreen: true,
-            enableExternalFileImport: false,
+            enableExternalFileImport: true,
+            externalFileImportDefaultVersion: 1,
+            enableSystemInteractionAudio: false,
+            enableCrossAppDragDrop: false,
+            enableAppMultiWindow: false,
             forceRealtimeBlur: false,
             enableWindowBlur: false,
             enableFluentV2: true,
@@ -288,6 +303,14 @@ const State = {
                 changed = true;
             }
         });
+
+        // File upload graduated from Lab to Privacy. Enable it once for users
+        // upgrading from the former opt-in default, then respect later choices.
+        if (needsExternalFileImportDefaultMigration) {
+            this.settings.enableExternalFileImport = true;
+            this.settings.externalFileImportDefaultVersion = 1;
+            changed = true;
+        }
 
         // Keep Process Manager available on the desktop and in All Apps, but do
         // not pin it to the Start home page by default. Version 2 reverses the
@@ -997,7 +1020,6 @@ const State = {
         const material = this.settings.materialType === 'mica' ? 'mica' : 'gaussian';
         const blur = Math.max(10, Math.min(70, Number(this.settings.blurIntensity ?? 40)));
         const materialBlur = blur;
-        const micaBlur = Math.max(10, Math.min(90, Math.round(blur * 1.25)));
         const lightBlur = Math.max(8, Math.round(materialBlur * 0.5));
         const smallBlur = Math.max(6, Math.round(materialBlur * 0.35));
         const wallpaper = wallpaperOverride || this.getResolvedWallpaper('desktop');
@@ -1015,7 +1037,6 @@ const State = {
         document.body.style.setProperty('--blur-sm', `${smallBlur}px`);
         document.body.style.setProperty('--fluent-material-blur', `${materialBlur}px`);
         document.body.style.setProperty('--fluent-material-blur-light', `${lightBlur}px`);
-        document.body.style.setProperty('--fluent-mica-blur', `${micaBlur}px`);
         document.body.style.setProperty('--fluent-wallpaper-url', `url("${safeWallpaper}")`);
     },
 
@@ -1181,11 +1202,12 @@ const State = {
 
     // 添加通知
     addNotification(notification) {
+        const { playSound = true, ...notificationData } = notification || {};
         const newNotification = {
             id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             time: new Date().toISOString(),
             type: 'info',
-            ...notification
+            ...notificationData
         };
         this.notifications.unshift(newNotification);
         
@@ -1199,6 +1221,9 @@ const State = {
         
         Storage.set(Storage.keys.NOTIFICATIONS, this.notifications);
         this.emit('notificationAdd', newNotification);
+        if (playSound !== false && typeof SystemInteractionAudio !== 'undefined') {
+            SystemInteractionAudio.playNotification(newNotification.type);
+        }
         return newNotification.id;
     },
 

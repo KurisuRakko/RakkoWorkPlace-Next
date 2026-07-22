@@ -19,9 +19,7 @@
 .app-installer-state h2, .app-installer-blocked h1, .app-installer-complete h1 { margin: 18px 0 8px; color: var(--text-primary); font-size: 23px; font-weight: 600; }
 .app-installer-state p, .app-installer-blocked p, .app-installer-complete p { max-width: 480px; margin: 6px 0; color: var(--text-secondary); line-height: 1.6; }
 .app-installer-spinner { width: 42px; height: 42px; border: 4px solid color-mix(in srgb, var(--accent) 22%, transparent); border-top-color: var(--accent); border-radius: 50%; animation: appInstallerSpin .8s linear infinite; }
-.app-installer-success, .app-installer-error { display: grid; width: 68px; height: 68px; place-items: center; border-radius: 50%; color: white; font-size: 36px; font-weight: 500; }
-.app-installer-success { background: #107c10; box-shadow: 0 0 0 8px color-mix(in srgb, #107c10 13%, transparent); }
-.app-installer-error { background: #d13438; box-shadow: 0 0 0 8px color-mix(in srgb, #d13438 13%, transparent); }
+.app-installer-status-icon { display: block; width: 76px; height: 76px; object-fit: contain; filter: none !important; }
 .app-installer-complete label { display: flex; align-items: center; gap: 9px; width: min(100%, 360px); margin-top: 12px; padding: 11px 13px; border: 1px solid var(--border-color); border-radius: 9px; color: var(--text-primary); background: var(--bg-tertiary); text-align: left; cursor: pointer; }
 .app-installer-complete input { width: 17px; height: 17px; margin: 0; accent-color: var(--accent); }
 @keyframes appInstallerSpin { to { transform: rotate(360deg); } }

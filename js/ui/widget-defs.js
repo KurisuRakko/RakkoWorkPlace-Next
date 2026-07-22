@@ -175,8 +175,9 @@ function wOpenInBrowser(input, ctx) {
     if (typeof Widgets !== 'undefined' && Widgets.isOpen) return;
     WindowManager.openApp('browser');
     setTimeout(() => {
-        if (window.BrowserApp && typeof BrowserApp.navigate === 'function') {
-            BrowserApp.navigate(input);
+        const browserComponent = WindowManager?.getAppComponent?.('browser');
+        if (browserComponent?.navigate) {
+            browserComponent.navigate(input);
         }
     }, 450);
 }
@@ -1915,16 +1916,18 @@ function wMediaOpenApp(ctx) {
 }
 
 function wQuickNotesText() {
-    if (window.NotesApp && typeof NotesApp.getQuickNoteContent === 'function') {
-        return NotesApp.getQuickNoteContent();
+    const notesComponent = WindowManager?.getAppComponent?.('notes') || window.NotesApp;
+    if (notesComponent && typeof notesComponent.getQuickNoteContent === 'function') {
+        return notesComponent.getQuickNoteContent();
     }
     return (State && State.settings && State.settings.notesQuickContent) || '';
 }
 
 function wSetQuickNotesText(value) {
     const text = String(value || '');
-    if (window.NotesApp && typeof NotesApp.setQuickNoteContent === 'function') {
-        NotesApp.setQuickNoteContent(text, { source: 'widget' });
+    const notesComponent = WindowManager?.getAppComponent?.('notes') || window.NotesApp;
+    if (notesComponent && typeof notesComponent.setQuickNoteContent === 'function') {
+        notesComponent.setQuickNoteContent(text, { source: 'widget' });
         return;
     }
     if (State && typeof State.updateSettings === 'function') {

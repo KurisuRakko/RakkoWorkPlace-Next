@@ -191,7 +191,7 @@ const DeveloperCenterApp = {
                 if (id === 'build' && this.activeProjectId) {
                     const projectId = this.activeProjectId;
                     DeveloperCenterStore.get('projects', projectId).then((project) => {
-                        if (!project || this.activeProjectId !== projectId) return;
+                        if (!this.canViewProjectSource(project) || this.activeProjectId !== projectId) return;
                         if (this._pendingPackageProjectId === projectId) {
                             this._pendingPackageProjectId = null;
                             this.renderPackageInfo(pageEl, project);
@@ -292,11 +292,20 @@ const DeveloperCenterApp = {
         return `${(value / 1048576).toFixed(1)} MB`;
     },
 
+    canViewProjectSource(project) {
+        return !!project && (project.importedFromFap !== true || project.allowUnpack === true);
+    },
+
+    isDeveloperCenterApp(app) {
+        return !!app && app.developerCenterVisible !== false;
+    },
+
     async renderHome(page) {
         const renderToken = page.dataset.dcRenderToken;
         page.className = 'fw-page dc-page';
         page.appendChild(this.heading(this.text('title'), this.text('buildDesc')));
-        const [projects, favorites] = await Promise.all([DeveloperCenterStore.getAll('projects'), DeveloperCenterStore.getFavorites()]);
+        const [allProjects, favorites] = await Promise.all([DeveloperCenterStore.getAll('projects'), DeveloperCenterStore.getFavorites()]);
+        const projects = allProjects.filter((project) => this.canViewProjectSource(project));
         if (!this.isCurrentRender(page, 'home', renderToken)) return;
         const tools = this.TOOLS.filter((tool) => favorites.includes(tool.id));
         const common = document.createElement('section');
@@ -365,7 +374,7 @@ const DeveloperCenterApp = {
         const section = document.createElement('section');
         section.className = 'dc-section';
         section.innerHTML = `<div class="dc-section-title"><h2>${this.text('allProjects')}</h2></div>`;
-        const projects = await DeveloperCenterStore.getAll('projects');
+        const projects = (await DeveloperCenterStore.getAll('projects')).filter((project) => this.canViewProjectSource(project));
         if (!this.isCurrentRender(page, 'build', renderToken) || this.activeProjectId) return;
         if (!projects.length) {
             const empty = document.createElement('div');
@@ -409,7 +418,7 @@ const DeveloperCenterApp = {
 
     async openProject(projectId) {
         const project = await DeveloperCenterStore.get('projects', projectId);
-        if (!project || !this.frame?.pageEl) return;
+        if (!this.canViewProjectSource(project) || !this.frame?.pageEl) return;
         this._afterSecondaryExit(() => {
             this.activePage = 'build';
             this.activeProjectId = project.id;
@@ -418,7 +427,7 @@ const DeveloperCenterApp = {
     },
 
     packageProject(project) {
-        if (!project || !this.frame?.pageEl) return;
+        if (!this.canViewProjectSource(project) || !this.frame?.pageEl) return;
         this.closeContextMenu();
         this._afterSecondaryExit(() => {
             this.activePage = 'build';
@@ -679,7 +688,8 @@ const DeveloperCenterApp = {
         form.innerHTML = `
             <div class="dc-field"><label>${english ? 'App name' : 'App 名称'}</label><input class="dc-input" data-package-field="name" maxlength="60" value="${this.esc(project.name)}"></div>
             <div class="dc-field"><label>${english ? 'App description' : 'App 简介'}</label><textarea class="dc-textarea dc-package-description" data-package-field="description" maxlength="600" placeholder="${english ? 'Describe what this App does' : '简要说明该 App 的用途'}">${this.esc(project.description || '')}</textarea><span class="dc-note">${english ? '1–600 characters; this text is displayed by the installer.' : '1–600 个字符；安装工具会向用户显示此内容。'}</span></div>
-            <div class="dc-field"><label>${english ? 'Developer' : '开发者'}</label><input class="dc-input" value="${this.esc(identity.displayName)}" readonly aria-readonly="true"><span class="dc-note">${english ? 'Generated from the current account and the last six characters of this device account hash.' : '由当前账户名称与本机账户 Hash 的最后 6 位自动生成。'}</span></div>`;
+            <div class="dc-field"><label>${english ? 'Developer' : '开发者'}</label><input class="dc-input" value="${this.esc(identity.displayName)}" readonly aria-readonly="true"><span class="dc-note">${english ? 'Generated from the current account and the last six characters of this device account hash.' : '由当前账户名称与本机账户 Hash 的最后 6 位自动生成。'}</span></div>
+            <label class="dc-package-unpack-row"><input type="checkbox" data-package-field="allow-unpack" ${project.allowUnpack === true ? 'checked' : ''}><span><strong>${english ? 'Allow other users to unpack this App' : '允许其他用户解包此 App'}</strong><small>${english ? 'When imported through Developer Center, the project source can be viewed and edited. Imports opened elsewhere never expose source in Developer Center.' : '勾选后，其他用户从开发者中心导入时可查看和编辑项目源码；从其他位置打开安装包时始终不会在开发者中心公开源码。'}</small></span></label>`;
         page.appendChild(form);
         this.appendFooter(page, [
             this.button(english ? 'Back' : '上一步', 'secondary', () => this.openProject(project.id), 'Arrow Left'),
@@ -691,6 +701,7 @@ const DeveloperCenterApp = {
         const english = typeof I18n !== 'undefined' && I18n.currentLang === 'en';
         const name = String(page.querySelector('[data-package-field="name"]')?.value || '').trim();
         const description = String(page.querySelector('[data-package-field="description"]')?.value || '').trim();
+        const allowUnpack = !!page.querySelector('[data-package-field="allow-unpack"]:checked');
         if (!this.isValidName(name, 60) || await DeveloperCenterStore.nameExists(name, project.id)) {
             this.toast(this.text('invalidName'), 'error');
             return;
@@ -706,7 +717,8 @@ const DeveloperCenterApp = {
             title: project.title === previousName ? name : (project.title || name),
             description,
             developer: identity.displayName,
-            developerHash: identity.hash
+            developerHash: identity.hash,
+            allowUnpack
         });
         Object.assign(project, saved);
         this.startValidation(page, saved);
@@ -1253,6 +1265,8 @@ const DeveloperCenterApp = {
             ...project,
             id: existing?.id || DeveloperCenterStore.createId('created-app'),
             projectId: project.id,
+            allowUnpack: project.allowUnpack === true,
+            developerCenterVisible: true,
             importedFromFap: project.importedFromFap === true,
             permissionConsentRequired: project.importedFromFap === true || project.permissionConsentRequired === true
         });
@@ -1267,24 +1281,30 @@ const DeveloperCenterApp = {
     async finishImportedApp(imported) {
         imported.importedFromFap = true;
         imported.permissionConsentRequired = true;
-        const project = await DeveloperCenterStore.saveProject({
-            id: imported.projectId,
-            name: imported.name,
-            type: imported.type,
-            title: imported.title,
-            icon: imported.icon,
-            url: imported.url,
-            html: imported.html,
-            css: imported.css,
-            js: imported.js,
-            forceFluentUI: imported.forceFluentUI === true,
-            permissions: imported.permissions || [],
-            network: DeveloperCenterStore.normalizeNetworkConfig(imported.network),
-            importedFromFap: true,
-            permissionConsentRequired: true,
-            sourcePackageId: imported.sourcePackageId
-        });
-        imported.projectId = project.id;
+        imported.developerCenterVisible = true;
+        if (imported.allowUnpack === true) {
+            const project = await DeveloperCenterStore.saveProject({
+                id: imported.projectId,
+                name: imported.name,
+                type: imported.type,
+                title: imported.title,
+                icon: imported.icon,
+                url: imported.url,
+                html: imported.html,
+                css: imported.css,
+                js: imported.js,
+                forceFluentUI: imported.forceFluentUI === true,
+                permissions: imported.permissions || [],
+                network: DeveloperCenterStore.normalizeNetworkConfig(imported.network),
+                allowUnpack: true,
+                importedFromFap: true,
+                permissionConsentRequired: true,
+                sourcePackageId: imported.sourcePackageId
+            });
+            imported.projectId = project.id;
+        } else {
+            imported.projectId = imported.projectId || DeveloperCenterStore.createId('sealed-project');
+        }
         const app = await DeveloperCenterStore.saveApp(imported);
         DeveloperCreatedRuntime.register(app);
         DeveloperCreatedRuntime.refreshShell();
@@ -1303,7 +1323,7 @@ const DeveloperCenterApp = {
         input.className = 'dc-hidden-input dc-import-input';
         input.addEventListener('change', () => this.importPackage(input.files?.[0]));
         page.appendChild(input);
-        const apps = await DeveloperCenterStore.getAll('apps');
+        const apps = (await DeveloperCenterStore.getAll('apps')).filter((app) => this.isDeveloperCenterApp(app));
         if (!this.isCurrentRender(page, 'apps', renderToken)) return;
         if (!apps.length) {
             const empty = document.createElement('div');
@@ -1356,7 +1376,10 @@ const DeveloperCenterApp = {
             // Never offer a package that the installer itself cannot read. This
             // checks the exact bytes that will be downloaded without running App code.
             const verified = await DeveloperCenterStore.importApp(packageFile);
-            if (verified.sourcePackageId !== String(app.id || '') || verified.name !== String(app.name || '').trim() || verified.type !== app.type) {
+            if (verified.sourcePackageId !== String(app.id || '') ||
+                verified.name !== String(app.name || '').trim() ||
+                verified.type !== app.type ||
+                verified.allowUnpack !== (app.allowUnpack === true)) {
                 throw new Error('Exported package self-check failed');
             }
             DeveloperCenterStore.download(packageFile, filename);
@@ -1401,10 +1424,12 @@ const DeveloperCenterApp = {
     async searchAll(query) {
         const normalized = String(query || '').trim().toLocaleLowerCase();
         if (!normalized) return [];
-        const [projects, apps] = await Promise.all([
+        let [projects, apps] = await Promise.all([
             DeveloperCenterStore.getAll('projects'),
             DeveloperCenterStore.getAll('apps')
         ]);
+        projects = projects.filter((project) => this.canViewProjectSource(project));
+        apps = apps.filter((app) => this.isDeveloperCenterApp(app));
         const includes = (value) => String(value || '').toLocaleLowerCase().includes(normalized);
         const projectResults = projects.filter((project) => includes(`${project.name} ${project.type}`)).map((project) => ({
             id: `project:${project.id}`,
@@ -1783,9 +1808,11 @@ const DeveloperCenterApp = {
     async renderSettings(page) {
         const renderToken = page.dataset.dcRenderToken;
         page.className = 'fw-page dc-page';
-        const [projects, apps, bytes] = await Promise.all([
+        let [projects, apps, bytes] = await Promise.all([
             DeveloperCenterStore.getAll('projects'), DeveloperCenterStore.getAll('apps'), DeveloperCenterStore.estimateBytes()
         ]);
+        projects = projects.filter((project) => this.canViewProjectSource(project));
+        apps = apps.filter((app) => this.isDeveloperCenterApp(app));
         if (!this.isCurrentRender(page, 'settings', renderToken)) return;
         page.appendChild(this.heading(this.text('settingsTitle'), this.text('settingsDesc')));
         const stats = document.createElement('div');
@@ -1840,9 +1867,11 @@ const DeveloperCenterApp = {
             await Promise.all(all.filter((project) => !appProjectIds.has(project.id)).map((project) => DeveloperCenterStore.remove('projects', project.id)));
         }));
         action(this.text('clearApps'), typeof I18n !== 'undefined' && I18n.currentLang === 'en' ? 'Closes and unregisters every created App. Projects are kept.' : '关闭并注销所有自建 App，但保留项目源码。', this.text('clearApps'), true, () => this.confirmAction(this.text('clearApps'), async () => {
-            const all = await DeveloperCenterStore.getAll('apps');
-            for (const app of all) await DeveloperCreatedRuntime.unregister(app.id);
-            await DeveloperCenterStore.clear('apps');
+            const apps = (await DeveloperCenterStore.getAll('apps')).filter((app) => this.isDeveloperCenterApp(app));
+            for (const app of apps) {
+                await DeveloperCreatedRuntime.unregister(app.id);
+                await DeveloperCenterStore.remove('apps', app.id);
+            }
         }));
         page.appendChild(actions);
         const note = document.createElement('p');

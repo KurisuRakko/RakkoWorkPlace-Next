@@ -1,5 +1,5 @@
 /**
- * Lab feature: import external files into the in-memory FS (persisted via Storage).
+ * User-controlled file upload into the in-memory FS (persisted via Storage).
  * - Supports file picker ("Upload") and OS drag-drop (DataTransfer.files)
  * - Shows a modern blue (accent) progress modal, adaptive to light/dark
  */
@@ -201,7 +201,7 @@
         footer.className = 'file-import-footer';
         const hint = document.createElement('div');
         hint.className = 'file-import-hint';
-        hint.textContent = isZh() ? '实验室功能：导入内容会保存在浏览器本地存储中' : 'Lab feature: imported data is stored in browser local storage';
+        hint.textContent = isZh() ? '导入内容会保存在浏览器本地存储中' : 'Imported data is stored in browser local storage';
 
         const cancelBtn = FluentUI.Button
             ? FluentUI.Button({ text: t('files.import-cancel'), variant: 'secondary', onClick: () => session.cancel() })

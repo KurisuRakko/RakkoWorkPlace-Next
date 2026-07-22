@@ -372,11 +372,11 @@ menu.show(pointerEvent.clientX, pointerEvent.clientY);
 
 ### Dialog
 
-用于系统提示、警告和错误：
+用于系统提示、成功、警告和错误：
 
 ```javascript
 const dialog = FluentUI.Dialog({
-    type: 'warning',             // info | warning | error
+    type: 'warning',             // info | success | warning | error
     title: t('confirm'),
     content: t('demo.delete-confirm'),
     buttons: [

@@ -50,6 +50,11 @@ button.dc-card:hover, button.dc-card:focus-visible, .dc-project-card:hover, .dc-
 .dc-package-info-form { max-width: 720px; }
 .dc-textarea.dc-package-description { min-height: 132px; resize: vertical; }
 .dc-package-info-form .dc-input[readonly] { color: var(--text-secondary); background: var(--bg-tertiary); cursor: default; }
+.dc-package-unpack-row { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; align-items: start; padding: 14px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-secondary); cursor: pointer; }
+.dc-package-unpack-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--accent); }
+.dc-package-unpack-row strong, .dc-package-unpack-row small { display: block; }
+.dc-package-unpack-row strong { color: var(--text-primary); font-size: 13px; }
+.dc-package-unpack-row small { margin-top: 4px; color: var(--text-secondary); font-size: 11px; line-height: 1.5; }
 .dc-field { display: grid; gap: 7px; }
 .dc-field > label, .dc-field-label { color: var(--text-primary); font-size: 13px; font-weight: 600; }
 .dc-field > .dc-note { display: block; margin-top: 0; }
@@ -176,6 +181,7 @@ body:not(.dark-mode) .dc-token-function { color: #795e26; }
 .dc-editor-font-host, .dc-editor-font-select { display: block; width: 100%; min-width: 0; }
 .dc-editor-settings-preview { grid-column: 1 / -1; margin: 0; padding: 14px; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--radius-md); color: var(--accent); background: var(--bg-primary); font: var(--dc-code-size, 13px)/1.55 var(--dc-code-font, 'Cascadia Code', Consolas, monospace); }
 .dc-context-menu { position: fixed; z-index: 10050; min-width: 190px; padding: 5px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-primary); box-shadow: 0 10px 30px rgba(0,0,0,.22); }
+body.animations-enabled .dc-context-menu { animation: scaleIn 0.15s ease-out; }
 .dc-context-menu button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border: 0; border-radius: 5px; color: var(--text-primary); background: transparent; font: inherit; text-align: left; cursor: pointer; }
 .dc-context-menu button:hover { background: var(--bg-tertiary); }
 .dc-context-menu button.is-danger { color: #c42b1c; }

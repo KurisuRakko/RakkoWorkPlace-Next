@@ -363,7 +363,15 @@ const FluentUI = {
             const next = value === true;
             toggle.classList.toggle('active', next);
             toggle.setAttribute('aria-checked', next ? 'true' : 'false');
-            if (notify && onChange) onChange(next);
+            if (notify && onChange) {
+                const invokeChange = () => onChange(next);
+                if (typeof SystemInteractionAudio !== 'undefined'
+                    && typeof SystemInteractionAudio.runSilently === 'function') {
+                    SystemInteractionAudio.runSilently(invokeChange);
+                } else {
+                    invokeChange();
+                }
+            }
         };
         const toggleChecked = () => setChecked(!toggle.classList.contains('active'), true);
 
@@ -475,7 +483,8 @@ const FluentUI = {
             const viewportHeight = viewport.clientHeight;
             const scrollHeight = viewport.scrollHeight;
             const maxScroll = Math.max(0, scrollHeight - viewportHeight);
-            return { viewportHeight, scrollHeight, maxScroll };
+            const trackHeight = rail.clientHeight || viewportHeight;
+            return { viewportHeight, scrollHeight, maxScroll, trackHeight };
         };
 
         const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -545,7 +554,7 @@ const FluentUI = {
         };
 
         const refresh = () => {
-            const { viewportHeight, scrollHeight, maxScroll } = getMetrics();
+            const { viewportHeight, scrollHeight, maxScroll, trackHeight } = getMetrics();
             if (scrollHeight <= viewportHeight + 1 || viewportHeight <= 0) {
                 area.classList.add('no-scroll');
                 thumb.style.height = '0px';
@@ -554,10 +563,10 @@ const FluentUI = {
             }
 
             area.classList.remove('no-scroll');
-            const thumbHeight = Math.max(minThumbSize, Math.round((viewportHeight / scrollHeight) * viewportHeight));
-            thumb.style.height = `${Math.min(viewportHeight, thumbHeight)}px`;
+            const thumbHeight = Math.max(minThumbSize, Math.round((viewportHeight / scrollHeight) * trackHeight));
+            thumb.style.height = `${Math.min(trackHeight, thumbHeight)}px`;
 
-            const trackRange = Math.max(1, viewportHeight - thumb.offsetHeight);
+            const trackRange = Math.max(1, trackHeight - thumb.offsetHeight);
             const thumbTop = (viewport.scrollTop / maxScroll) * trackRange;
             thumb.style.transform = `translateY(${thumbTop}px)`;
         };
@@ -570,9 +579,9 @@ const FluentUI = {
         };
 
         const setScrollByThumbTop = (top) => {
-            const { viewportHeight, maxScroll } = getMetrics();
+            const { trackHeight, maxScroll } = getMetrics();
             if (maxScroll <= 0) return;
-            const trackRange = Math.max(1, viewportHeight - thumb.offsetHeight);
+            const trackRange = Math.max(1, trackHeight - thumb.offsetHeight);
             const clampedTop = Math.min(trackRange, Math.max(0, top));
             viewport.scrollTop = (clampedTop / trackRange) * maxScroll;
         };
@@ -580,9 +589,9 @@ const FluentUI = {
         const onPointerMove = (e) => {
             if (!dragging) return;
             const delta = e.clientY - dragStartY;
-            const { viewportHeight, maxScroll } = getMetrics();
+            const { trackHeight, maxScroll } = getMetrics();
             if (maxScroll <= 0) return;
-            const trackRange = Math.max(1, viewportHeight - thumb.offsetHeight);
+            const trackRange = Math.max(1, trackHeight - thumb.offsetHeight);
             const nextScroll = dragStartScroll + (delta / trackRange) * maxScroll;
             viewport.scrollTop = Math.min(maxScroll, Math.max(0, nextScroll));
         };
@@ -719,7 +728,12 @@ const FluentUI = {
         
         overlay.appendChild(modal);
         overlay.close = close;
-        overlay.show = () => document.body.appendChild(overlay);
+        overlay.show = () => {
+            document.body.appendChild(overlay);
+            if (typeof SystemInteractionAudio !== 'undefined') {
+                SystemInteractionAudio.playDialog('info');
+            }
+        };
         return overlay;
     },
 
@@ -795,7 +809,7 @@ const FluentUI = {
     // ============ 警告框/对话框 ============
     Dialog(opts = {}) {
         const { 
-            type = 'info',  // 'info' | 'warning' | 'error'
+            type = 'info',  // 'info' | 'success' | 'warning' | 'error'
             title = '',
             content = '',
             buttons = [{ text: '确定', variant: 'primary' }],  // 支持1-3个按钮
@@ -806,6 +820,7 @@ const FluentUI = {
         // 类型对应的图标和标题
         const typeConfig = {
             info: { icon: 'Information Circle', defaultTitle: '提示' },
+            success: { icon: 'Check Circle', defaultTitle: '成功' },
             warning: { icon: 'Question Mark Circle', defaultTitle: '警告' },
             error: { icon: 'Question Mark Circle', defaultTitle: '错误' }
         };
@@ -861,6 +876,9 @@ const FluentUI = {
         
         overlay.appendChild(dialog);
         document.body.appendChild(overlay);
+        if (typeof SystemInteractionAudio !== 'undefined') {
+            SystemInteractionAudio.playDialog(type);
+        }
         
         // 触发动画
         requestAnimationFrame(() => {
@@ -1007,6 +1025,9 @@ const FluentUI = {
         
         overlay.appendChild(dialog);
         document.body.appendChild(overlay);
+        if (typeof SystemInteractionAudio !== 'undefined') {
+            SystemInteractionAudio.playDialog('input');
+        }
         
         // 触发动画并聚焦输入框
         requestAnimationFrame(() => {
@@ -1105,6 +1126,9 @@ const FluentUI = {
         
         // 添加到容器
         this._toastContainer.appendChild(toast);
+        if (typeof SystemInteractionAudio !== 'undefined') {
+            SystemInteractionAudio.playNotification(type);
+        }
         
         // 触发入场动画
         requestAnimationFrame(() => {

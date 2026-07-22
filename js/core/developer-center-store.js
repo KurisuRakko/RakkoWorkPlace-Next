@@ -281,8 +281,9 @@ const DeveloperCenterStore = {
         const normalized = String(name || '').trim().toLocaleLowerCase();
         if (!normalized) return false;
         const [projects, apps] = await Promise.all([this.getAll('projects'), this.getAll('apps')]);
-        return projects.some((item) => item.id !== excludeProjectId && String(item.name || '').trim().toLocaleLowerCase() === normalized) ||
-            apps.some((item) => item.projectId !== excludeProjectId && String(item.name || '').trim().toLocaleLowerCase() === normalized);
+        const isExcludedProject = (projectId) => !!excludeProjectId && projectId === excludeProjectId;
+        return projects.some((item) => !isExcludedProject(item.id) && String(item.name || '').trim().toLocaleLowerCase() === normalized) ||
+            apps.some((item) => !isExcludedProject(item.projectId) && String(item.name || '').trim().toLocaleLowerCase() === normalized);
     },
 
     async estimateBytes() {
@@ -524,6 +525,7 @@ const DeveloperCenterStore = {
             description,
             developer,
             developerHash,
+            allowUnpack: app.allowUnpack === true,
             forceFluentUI: app.forceFluentUI === true,
             permissions: [...new Set(Array.isArray(app.permissions) ? app.permissions : [])]
                 .filter((permission) => this.SUPPORTED_PERMISSIONS.includes(permission)),
@@ -591,6 +593,7 @@ const DeveloperCenterStore = {
             description,
             developer,
             developerHash,
+            allowUnpack: manifest.allowUnpack === true,
             sourcePackageId: String(manifest.id || ''),
             icon, url: manifest.type === 'pwa' ? String(manifest.url || '') : '',
             html: entries['app/index.html'] ? new TextDecoder().decode(entries['app/index.html']) : '',

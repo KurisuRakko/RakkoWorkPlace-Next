@@ -27,6 +27,9 @@ const WindowManager = {
     UNSNAP_RESTORE_BLEND_MS: 240,
     TOP_MAXIMIZE_DWELL_MS: 1500,
     TASKBAR_ICON_FEEDBACK_MS: 280,
+    MULTI_WINDOW_APP_IDS: new Set(['files', 'notes', 'browser', 'terminal']),
+    MULTI_WINDOW_LAUNCH_SOURCES: new Set(['desktop', 'start-menu']),
+    _componentTemplates: new Map(),
     _taskbarAutoHideBound: false,
     _taskbarAutoHideTimer: null,
     _taskbarHideAnimTimer: null,
@@ -72,8 +75,63 @@ const WindowManager = {
         return { ...cfg, title: cfg.titleKey ? t(cfg.titleKey) : (cfg.title || appId) };
     },
 
+    _cloneComponentValue(value, seen = new WeakMap()) {
+        if (value === null || typeof value !== 'object') return value;
+        if (seen.has(value)) return seen.get(value);
+        if (value instanceof Date) return new Date(value.getTime());
+        if (value instanceof Set) return new Set(Array.from(value, (item) => this._cloneComponentValue(item, seen)));
+        if (value instanceof Map) {
+            const map = new Map();
+            seen.set(value, map);
+            value.forEach((item, key) => map.set(key, this._cloneComponentValue(item, seen)));
+            return map;
+        }
+        if (value instanceof WeakMap) return new WeakMap();
+        if (value instanceof WeakSet) return new WeakSet();
+        if (Array.isArray(value)) {
+            const array = [];
+            seen.set(value, array);
+            value.forEach((item) => array.push(this._cloneComponentValue(item, seen)));
+            return array;
+        }
+        const prototype = Object.getPrototypeOf(value);
+        if (prototype !== Object.prototype && prototype !== null) return value;
+        const object = Object.create(prototype);
+        seen.set(value, object);
+        Reflect.ownKeys(value).forEach((key) => {
+            object[key] = this._cloneComponentValue(value[key], seen);
+        });
+        return object;
+    },
+
+    _captureMultiWindowComponentTemplates() {
+        this.MULTI_WINDOW_APP_IDS.forEach((appId) => {
+            const config = this.appConfigs[appId];
+            const component = config?.component ? globalThis[config.component] : null;
+            if (!component || this._componentTemplates.has(appId)) return;
+            const template = {};
+            Reflect.ownKeys(component).forEach((key) => {
+                const value = component[key];
+                template[key] = typeof value === 'function' ? value : this._cloneComponentValue(value);
+            });
+            this._componentTemplates.set(appId, template);
+        });
+    },
+
+    _createComponentInstance(appId, fallbackComponent) {
+        const template = this._componentTemplates.get(appId);
+        if (!template) return fallbackComponent;
+        const instance = {};
+        Reflect.ownKeys(template).forEach((key) => {
+            const value = template[key];
+            instance[key] = typeof value === 'function' ? value : this._cloneComponentValue(value);
+        });
+        return instance;
+    },
+
     init() {
         this.container = document.getElementById('windows-container');
+        this._captureMultiWindowComponentTemplates();
         this._bindDesktopInactivityListener();
         this._bindEmbeddedFrameFocusListener();
 
@@ -102,6 +160,9 @@ const WindowManager = {
             }
             if (Object.prototype.hasOwnProperty.call(updates, 'tombstoneDimFrozenAppsEnabled')) {
                 this._syncTombstoneAppearance();
+            }
+            if (Object.prototype.hasOwnProperty.call(updates, 'enableAppMultiWindow')) {
+                this._syncAllTaskbarAppStates();
             }
         });
         this._initTaskbarAutoHide();
@@ -549,29 +610,33 @@ const WindowManager = {
 
     _setTaskbarIndicatorForWindow(windowData, forceActive = false) {
         if (!windowData || !windowData.appId) return;
-        const taskbarBtn = document.querySelector(`.taskbar-app[data-app-id="${windowData.appId}"]`);
-        if (!taskbarBtn) return;
-
-        const isVisible = windowData.element && windowData.element.style.display !== 'none' && !windowData.element.classList.contains('closing');
-        const isInactive = windowData.element?.classList.contains('window-inactive') === true;
-        const isMinimized = windowData.isMinimized === true || windowData.element?.style.display === 'none';
-        const isActive = forceActive && isVisible && !isMinimized && !windowData.isMinimizing && !isInactive;
-        taskbarBtn.classList.toggle('taskbar-app-active', isActive);
-        taskbarBtn.classList.toggle('taskbar-app-minimized', isMinimized);
-        taskbarBtn.classList.toggle('running', isVisible);
+        void forceActive;
+        this._syncTaskbarAppState(windowData.appId);
     },
 
     _syncTaskbarAppState(appId) {
         const taskbarBtn = document.querySelector(`.taskbar-app[data-app-id="${appId}"]`);
         if (!taskbarBtn) return;
-        const windowData = this.windows.find((w) => w.appId === appId && w.element && !w.element.classList.contains('closing'));
-        const isRunning = !!windowData;
-        const isMinimized = !!windowData && (windowData.isMinimized === true || windowData.element?.style.display === 'none');
-        const isActive = !!windowData && !isMinimized && !windowData.isMinimizing && !windowData.element.classList.contains('window-inactive');
+        const appWindows = this.getAppWindows(appId);
+        const isRunning = appWindows.length > 0;
+        const allMinimized = isRunning && appWindows.every((item) =>
+            item.isMinimized === true || item.isMinimizing === true || item.element?.style.display === 'none'
+        );
+        const isActive = appWindows.some((item) =>
+            item.id === this.activeWindowId
+            && item.isMinimized !== true
+            && item.isMinimizing !== true
+            && item.element?.style.display !== 'none'
+        );
 
-        taskbarBtn.classList.toggle('running', isRunning || isMinimized);
-        taskbarBtn.classList.toggle('taskbar-app-minimized', isMinimized);
+        taskbarBtn.classList.toggle('running', isRunning);
+        taskbarBtn.classList.toggle('taskbar-app-minimized', allMinimized);
         taskbarBtn.classList.toggle('taskbar-app-active', isActive);
+        taskbarBtn.classList.toggle('taskbar-app-multi', State.settings.enableAppMultiWindow === true && appWindows.length > 1);
+        taskbarBtn.dataset.windowCount = String(appWindows.length);
+        if (typeof Taskbar !== 'undefined' && typeof Taskbar.syncAppIndicator === 'function') {
+            Taskbar.syncAppIndicator(appId);
+        }
     },
 
     _syncAllTaskbarAppStates() {
@@ -582,13 +647,32 @@ const WindowManager = {
         ids.forEach((appId) => this._syncTaskbarAppState(appId));
     },
 
-    getAppWindow(appId) {
-        return this.windows.find((w) =>
+    getAppWindows(appId) {
+        return this.windows.filter((w) =>
             w &&
             w.appId === appId &&
             w.element &&
             !w.element.classList.contains('closing')
-        ) || null;
+        );
+    },
+
+    getAppWindow(appId) {
+        const appWindows = this.getAppWindows(appId);
+        if (!appWindows.length) return null;
+        const active = appWindows.find((item) => item.id === this.activeWindowId);
+        if (active) return active;
+        for (let index = this.focusHistory.length - 1; index >= 0; index -= 1) {
+            const match = appWindows.find((item) => item.id === this.focusHistory[index]);
+            if (match) return match;
+        }
+        return appWindows.sort((a, b) => (Number(b.element.style.zIndex) || 0) - (Number(a.element.style.zIndex) || 0))[0];
+    },
+
+    getAppComponent(appId) {
+        const windowData = this.getAppWindow(appId);
+        if (windowData?.component) return windowData.component;
+        const config = this.appConfigs[appId];
+        return config?.component ? globalThis[config.component] : null;
     },
 
     _setActiveWindow(windowId = null) {
@@ -1335,7 +1419,33 @@ const WindowManager = {
         }, 260);
     },
 
-    openApp(appId, data = null) {
+    _shouldCreateAdditionalWindow(appId, source, existingWindows) {
+        return State.settings.enableAppMultiWindow === true
+            && this.MULTI_WINDOW_APP_IDS.has(appId)
+            && this.MULTI_WINDOW_LAUNCH_SOURCES.has(source)
+            && existingWindows.length > 0;
+    },
+
+    _cascadeMultiWindowBounds(bounds, instanceIndex, appId) {
+        if (instanceIndex <= 0) return bounds;
+        const base = bounds?.lastNormalBounds || bounds;
+        const offset = 28 * ((instanceIndex - 1) % 8 + 1);
+        const width = Number(base?.width) || Number(bounds?.width) || 900;
+        const height = Number(base?.height) || Number(bounds?.height) || 600;
+        const viewportWidth = Math.max(width, globalThis.innerWidth || width);
+        const viewportHeight = Math.max(height, globalThis.innerHeight || height);
+        const maxLeft = Math.max(0, viewportWidth - width);
+        const maxTop = Math.max(0, viewportHeight - height - 52);
+        const left = Math.min(maxLeft, Math.max(0, (Number(base?.left) || 0) + offset));
+        const top = Math.min(maxTop, Math.max(0, (Number(base?.top) || 0) + offset));
+        return {
+            ...this._clampWindowBounds({ left, top, width, height }, appId),
+            snapLayout: null,
+            lastNormalBounds: null
+        };
+    },
+
+    openApp(appId, data = null, options = {}) {
 
         if (typeof SettingsApp !== 'undefined' && SettingsApp.isAppRepairing(appId)) {
             FluentUI.Toast({
@@ -1370,9 +1480,13 @@ const WindowManager = {
             return;
         }
 
-        // 检查是否已经打开该应用窗口 - Check if app window already exists
+        // Taskbar and in-App launches activate the most recent window. Desktop
+        // and Start may create another instance for the four opted-in Apps.
+        const existingWindows = this.getAppWindows(appId);
+        const source = String(options?.source || 'app');
+        const createAdditionalWindow = this._shouldCreateAdditionalWindow(appId, source, existingWindows);
         const existingWindow = this.getAppWindow(appId);
-        if (existingWindow) {
+        if (existingWindow && !createAdditionalWindow) {
             this.focusWindow(existingWindow.id);
             this._syncTaskbarAppState(appId);
 
@@ -1384,18 +1498,22 @@ const WindowManager = {
                     existingComponent.openData(data);
                 }
             }
-            return;
+            return existingWindow;
         }
 
 
         // 创建新窗口 - Create new window
         const windowId = `window-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-        const initialBounds = this._readWindowBounds(appId, config);
+        const rememberedBounds = this._readWindowBounds(appId, config);
+        const initialBounds = this._cascadeMultiWindowBounds(rememberedBounds, existingWindows.length, appId);
         const windowElement = this.createWindow(windowId, appId, config, initialBounds);
         const initialLastNormalBounds = initialBounds.lastNormalBounds
             ? this._clampWindowBounds(initialBounds.lastNormalBounds, appId)
             : (initialBounds.snapLayout ? null : this._clampWindowBounds(initialBounds, appId));
-        const component = config.component ? globalThis[config.component] : null;
+        const baseComponent = config.component ? globalThis[config.component] : null;
+        const component = existingWindows.length > 0
+            ? this._createComponentInstance(appId, baseComponent)
+            : baseComponent;
         const windowData = {
             id: windowId,
             appId: appId,
@@ -1409,7 +1527,9 @@ const WindowManager = {
             minimizedAt: null,
             frozenAt: null,
             snapLayout: initialBounds.snapLayout || null,
-            lastNormalBounds: initialLastNormalBounds
+            lastNormalBounds: initialLastNormalBounds,
+            launchSource: source,
+            instanceNumber: existingWindows.length + 1
         };
         this.windows.push(windowData);
 
@@ -1450,6 +1570,7 @@ const WindowManager = {
 
         // 聚焦新窗口 - Focus the new window
         this.focusWindow(windowId);
+        return windowData;
     },
 
     createWindow(windowId, appId, config, initialBounds = null) {
@@ -1464,6 +1585,7 @@ const WindowManager = {
         windowElement.style.zIndex = ++this.zIndexCounter;
 
         windowElement.innerHTML = `
+            <div class="window-mica-backdrop" aria-hidden="true"></div>
             <div class="window-resize-handle resize-top"></div>
             <div class="window-resize-handle resize-bottom"></div>
             <div class="window-resize-handle resize-left"></div>
@@ -1495,8 +1617,64 @@ const WindowManager = {
 
         // 绑定窗口事件 - Bind window events
         this.bindWindowEvents(windowElement);
+        this._installMicaBackdropTracking(windowElement);
 
         return windowElement;
+    },
+
+    _installMicaBackdropTracking(windowElement) {
+        const backdrop = windowElement?.querySelector('.window-mica-backdrop');
+        if (!backdrop || typeof requestAnimationFrame !== 'function') return;
+
+        let frameId = 0;
+        let trackUntil = 0;
+
+        const syncPosition = () => {
+            frameId = 0;
+            if (!windowElement.isConnected) return;
+
+            const rect = windowElement.getBoundingClientRect();
+            const containerRect = this.container?.getBoundingClientRect();
+            const x = rect.left - (containerRect?.left || 0);
+            const y = rect.top - (containerRect?.top || 0);
+            backdrop.style.setProperty('--mica-window-x', `${x.toFixed(2)}px`);
+            backdrop.style.setProperty('--mica-window-y', `${y.toFixed(2)}px`);
+
+            if (performance.now() < trackUntil) {
+                frameId = requestAnimationFrame(syncPosition);
+            }
+        };
+
+        const trackPosition = (duration = 700) => {
+            trackUntil = Math.max(trackUntil, performance.now() + duration);
+            if (!frameId) frameId = requestAnimationFrame(syncPosition);
+        };
+
+        const mutationObserver = typeof MutationObserver === 'function'
+            ? new MutationObserver(() => trackPosition())
+            : null;
+        mutationObserver?.observe(windowElement, {
+            attributes: true,
+            attributeFilter: ['style', 'class']
+        });
+
+        const resizeObserver = typeof ResizeObserver === 'function'
+            ? new ResizeObserver(() => trackPosition())
+            : null;
+        resizeObserver?.observe(windowElement);
+
+        const handleViewportResize = () => trackPosition();
+        window.addEventListener('resize', handleViewportResize);
+
+        windowElement._micaBackdropCleanup = () => {
+            mutationObserver?.disconnect();
+            resizeObserver?.disconnect();
+            window.removeEventListener('resize', handleViewportResize);
+            if (frameId) cancelAnimationFrame(frameId);
+            frameId = 0;
+        };
+
+        trackPosition();
     },
 
     bindWindowEvents(windowElement) {
@@ -2179,6 +2357,7 @@ const WindowManager = {
             // Start wallpaper/taskbar transition together with the close motion.
             this.updateMaximizedWallpaperEffect();
             setTimeout(() => {
+                windowData.element._micaBackdropCleanup?.();
                 windowData.element.remove();
                 this.windows = this.windows.filter(w => w.id !== windowId);
                 this._removeWindowFromFocusHistory(windowId);

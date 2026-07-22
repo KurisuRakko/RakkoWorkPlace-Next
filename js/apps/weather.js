@@ -18,6 +18,8 @@ const WeatherApp = {
     contextMenu: null,
     _weatherRequestToken: 0,
     _currentLocationToken: 0,
+    _widgetCreditTimer: null,
+    _widgetCreditCleanupTimer: null,
     defaultLocations: {
         beijing: { nameKey: 'weather.beijing', widgetId: null, lat: 39.9042, lon: 116.4074, isDefault: true },
         shanghai: { nameKey: 'weather.shanghai', widgetId: 'wl4480', lat: 31.2304, lon: 121.4737, isDefault: true },
@@ -201,7 +203,6 @@ const WeatherApp = {
 
     renderWeatherSkeleton(content) {
         content.innerHTML = `
-            <div class="weather-widget" id="weather-widget"></div>
             <div class="weather-hero" id="weather-hero">
                 <div class="hero-left">
                     <div class="hero-location" id="hero-location">--</div>
@@ -225,6 +226,7 @@ const WeatherApp = {
                 <div class="section-title">${t('weather.next7')}</div>
                 <div class="daily-list" id="daily-list"></div>
             </div>
+            <div class="weather-widget" id="weather-widget"></div>
         `;
     },
 
@@ -248,6 +250,10 @@ const WeatherApp = {
         if (typeof State !== 'undefined' && typeof State.off === 'function') {
             State.off('languageChange', 'WeatherApp.languageChange');
         }
+        clearTimeout(this._widgetCreditTimer);
+        clearTimeout(this._widgetCreditCleanupTimer);
+        this._widgetCreditTimer = null;
+        this._widgetCreditCleanupTimer = null;
         this.container = null;
         this.windowId = null;
         return true;
@@ -262,7 +268,10 @@ const WeatherApp = {
             .saved-item:hover { background: rgba(0,0,0,0.05); }
 
             .weather-content { min-width: 0; min-height: 100%; padding: 24px 32px; }
-            .weather-widget { margin-bottom: 16px; }
+            .weather-widget { min-height: 18px; margin-top: 24px; text-align: center; }
+            .weather-widget:empty { display: none; }
+            .weather-widget-credit { color: var(--text-tertiary); font-size: 11px; opacity: .72; transition: opacity .28s ease; }
+            .weather-widget-credit.is-hiding { opacity: 0; pointer-events: none; }
             .weather-hero { display: flex; justify-content: space-between; align-items: center; background: linear-gradient(180deg, #4b7cff 0%, #6790ff 100%); border-radius: 24px; padding: 20px 24px; color: white; box-shadow: 0 10px 30px rgba(75,124,255,0.25); }
             .dark-mode .weather-hero { background: linear-gradient(180deg, #2a2f3a 0%, #3c4252 100%); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
             .hero-location { font-weight: 600; font-size: 18px; margin-bottom: 6px; }
@@ -347,14 +356,24 @@ const WeatherApp = {
     },
 
     injectWidget(widgetId) {
-        const host = document.getElementById('weather-widget');
+        const host = this.container?.querySelector('#weather-widget');
         if (!host) return;
+        clearTimeout(this._widgetCreditTimer);
+        clearTimeout(this._widgetCreditCleanupTimer);
         const wid = `ww_${this.windowId.replace(/[^a-zA-Z0-9_]/g, '')}` + (widgetId ? `_${widgetId}` : '');
         const aObj = { t: 'horizontal', lang: 'zh', sl_lpl: 1, ids: widgetId ? [widgetId] : [], font: 'Arial', sl_ics: 'one_a', sl_sot: 'celsius', cl_bkg: '#FFFFFF00', cl_font: '#000000', cl_cloud: '#d4d4d4', cl_persp: '#2196F3', cl_sun: '#FFC107', cl_moon: '#FFC107', cl_thund: '#FF5722' };
         const aStr = JSON.stringify(aObj).replace(/\"/g, '"').replace(/"/g, '&quot;');
         host.innerHTML = `
-            <div id="${wid}" v="1.3" loc="id" a="${aStr}"><a href="https://weatherwidget.org/" id="${wid}_u" target="_blank">Free weather widget for website</a></div>
+            <div id="${wid}" v="1.3" loc="id" a="${aStr}"><a class="weather-widget-credit" href="https://weatherwidget.org/" id="${wid}_u" target="_blank" rel="noopener noreferrer">Free weather widget for website</a></div>
         `;
+        this._widgetCreditTimer = setTimeout(() => {
+            const credit = [...host.querySelectorAll('a')].find((link) =>
+                link.id === `${wid}_u` || String(link.textContent || '').toLowerCase().includes('free weather')
+            );
+            if (!credit) return;
+            credit.classList.add('weather-widget-credit', 'is-hiding');
+            this._widgetCreditCleanupTimer = setTimeout(() => credit.remove(), 300);
+        }, 2200);
         const s = document.createElement('script');
         s.async = true;
         s.src = `https://app3.weatherwidget.org/js/?id=${wid}`;

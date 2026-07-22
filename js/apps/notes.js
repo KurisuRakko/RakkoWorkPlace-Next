@@ -1686,8 +1686,9 @@ const NotesApp = {
         }
         WindowManager.openApp('files');
         setTimeout(() => {
-            if (window.FilesApp && typeof FilesApp.navigateToId === 'function') {
-                FilesApp.navigateToId(item.parent.id, fileId);
+            const filesComponent = WindowManager.getAppComponent?.('files');
+            if (filesComponent?.navigateToId) {
+                filesComponent.navigateToId(item.parent.id, fileId);
             }
         }, 350);
     },

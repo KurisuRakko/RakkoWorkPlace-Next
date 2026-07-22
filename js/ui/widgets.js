@@ -31,6 +31,9 @@ const Widgets = {
     layers: { desktop: null, lock: null },
     isOpen: false,
     lockEditMode: false,
+    _surfaceTransitioning: false,
+    _surfaceTransitionId: 0,
+    _surfaceTransitionPromise: null,
     drawerPage: 'home',
     _currentVariantIdx: 0,
     _minimizedIds: [],
@@ -1549,9 +1552,9 @@ const Widgets = {
         this.isOpen = false;
         this.collapsed = false;
         clearTimeout(this._reopenTimer);
-        if (this.lockEditMode) {
-            this._exitLockEdit();
-        }
+        const lockExit = this.lockEditMode
+            ? this._exitLockEdit()
+            : (this._surfaceTransitionPromise || Promise.resolve(true));
         this.drawer.classList.remove('open');
         if (this.collapsedBar) this.collapsedBar.classList.remove('show');
         document.body.classList.remove('widgets-edit-mode');
@@ -1563,7 +1566,7 @@ const Widgets = {
             const page = this.drawer.querySelector('.widgets-page');
             if (page) page.innerHTML = '';
         }, 650);
-        this._restoreMinimizedWindows();
+        Promise.resolve(lockExit).finally(() => this._restoreMinimizedWindows());
     },
 
     /** 拖动期间临时收起抽屉 */
@@ -1632,21 +1635,58 @@ const Widgets = {
 
     /* ==================== 编辑锁屏模式 ==================== */
 
-    _enterLockEdit() {
-        if (this.lockEditMode) return;
+    async _enterLockEdit() {
+        if (this.lockEditMode) return false;
+        const transitionId = ++this._surfaceTransitionId;
         this.lockEditMode = true;
-        // 仅显示锁屏元素，不改变 State.view，
-        // 因此「完成」后回到桌面无需密码
-        LockScreen.show();
-        this.renderSurface('lock');
+        this._surfaceTransitioning = true;
         this.updateTexts();
+        try {
+            // 保持 State.view 为 desktop，因此返回桌面仍无需输入密码；
+            // 视觉层则与标准锁屏键复用完全相同的景深转场。
+            if (typeof window.runDesktopLockDepthTransition === 'function') {
+                const transition = window.runDesktopLockDepthTransition('lock');
+                this._surfaceTransitionPromise = transition;
+                this.renderSurface('lock');
+                await transition;
+            } else {
+                LockScreen.show();
+                this.renderSurface('lock');
+                Desktop.hide();
+            }
+            return true;
+        } finally {
+            if (this._surfaceTransitionId === transitionId) {
+                this._surfaceTransitioning = false;
+                this._surfaceTransitionPromise = null;
+            }
+        }
     },
 
-    _exitLockEdit() {
-        if (!this.lockEditMode) return;
+    async _exitLockEdit() {
+        if (!this.lockEditMode) return false;
+        const transitionId = ++this._surfaceTransitionId;
         this.lockEditMode = false;
-        LockScreen.hide();
+        this._surfaceTransitioning = true;
         this.updateTexts();
+        try {
+            if (typeof window.runDesktopLockDepthTransition === 'function') {
+                const transition = window.runDesktopLockDepthTransition('desktop');
+                this._surfaceTransitionPromise = transition;
+                this.renderSurface('desktop');
+                await transition;
+            } else {
+                Desktop.show();
+                this.renderSurface('desktop');
+                LockScreen.hide();
+            }
+            return true;
+        } finally {
+            if (this._surfaceTransitionId === transitionId) {
+                this._surfaceTransitioning = false;
+                this._surfaceTransitionPromise = null;
+            }
+        }
     },
 
     /* ==================== 拖拽（添加 / 移动） ==================== */
@@ -1820,7 +1860,7 @@ const Widgets = {
     },
 
     shouldSuppressLockUnlock(event) {
-        if (this.lockEditMode) return true;
+        if (this.lockEditMode || this._surfaceTransitioning) return true;
         if (event?.target?.closest?.('.fluent-widget')) return true;
         if (this._drag?.surface === 'lock' || this._pendingDrag?.surface === 'lock') return true;
         return Date.now() < this._lockUnlockSuppressedUntil;

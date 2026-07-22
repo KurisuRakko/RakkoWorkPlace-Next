@@ -118,7 +118,7 @@ State.updateSettings({
 });
 ```
 
-Important settings include `theme`, `language`, wallpapers, blur and material options, accent colors, animation, quick switching, window snapping, tombstone freezing, `startPinnedApps`, external file import, and strict CSP.
+Important settings include `theme`, `language`, wallpapers, blur and material options, accent colors, animation, quick switching, window snapping, tombstone freezing, `startPinnedApps`, external file import, the `enableSystemInteractionAudio`, `enableCrossAppDragDrop`, and `enableAppMultiWindow` Lab flags, and strict CSP.
 
 ### Event Bus
 
@@ -271,6 +271,8 @@ Only entries whose ID and URL exactly match the source-controlled catalog, and D
 Apps packaged by Developer Center run in sandboxed iframes and can request host capabilities only through the injected asynchronous `FluentOS` bridge. They cannot directly access the host document or ordinary browser storage. A project must declare `storage.local` before using `FluentOS.storage`; clipboard access requires `clipboard.read`, `clipboard.write`, or both. Calls remain subject to the authorization snapshot and browser security policies.
 
 Preview windows always receive a read-only capability profile. They inherit none of the project's declared permissions or network allowlists and may only read system theme/state/language and window information. Notifications, local storage, window or theme mutation, files, desktop, clipboard, and network calls are rejected. Test those capabilities only after the App passes safety validation, receives user approval, and runs in a normal window.
+
+The packaging information page can allow other users to unpack an App. FluentOS creates a viewable and editable source project only when the package allows unpacking and the user installs it through Developer Center's Import Package entry point. Packages opened from the desktop or Files never appear in Developer Center. This option controls FluentOS source access; it is not encryption or DRM.
 
 After `storage.local` is granted, each created App has a separate namespace for `FluentOS.storage`, with these UTF-8 quotas:
 

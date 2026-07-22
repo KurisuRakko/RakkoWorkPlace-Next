@@ -344,7 +344,7 @@ The caller remains responsible for mounting, outside-click handling, and cleanup
 
 ```javascript
 FluentUI.Dialog({
-    type: 'warning', // info | warning | error
+    type: 'warning', // info | success | warning | error
     title: t('confirm'),
     content: t('demo.delete-confirm'),
     buttons: [

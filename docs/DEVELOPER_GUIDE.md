@@ -146,7 +146,10 @@ State.updateSettings({
 | `windowEdgeSnapEnabled`, `windowHoverSnapEnabled` | 窗口贴靠能力 |
 | `tombstoneBackgroundEnabled`, `tombstoneFreezeDelayMs` | 后台窗口冻结策略 |
 | `startPinnedApps` | 开始菜单固定应用 ID 列表 |
-| `enableExternalFileImport` | 是否允许外部文件导入虚拟文件系统 |
+| `enableExternalFileImport` | 是否允许文件上传或拖入虚拟文件系统；默认开启，可在“设置 → 隐私”关闭 |
+| `enableSystemInteractionAudio` | 实验室系统交互音效（本地合成的开机、关机、重启、通知与分类弹窗提示音） |
+| `enableCrossAppDragDrop` | 实验室跨 App 类型感知拖放与实时投放预览 |
+| `enableAppMultiWindow` | 实验室多窗口；仅文件、快记、浏览器和终端支持 |
 | `strictCspEnabled` | 运行时严格 CSP |
 
 ### 事件总线
@@ -371,6 +374,8 @@ PWALoader.register({
 Developer Center 封装的 App 在 sandbox iframe 中运行，只能通过注入的异步 `FluentOS` bridge 请求宿主能力，不能直接读取宿主页面或普通浏览器存储。使用 `FluentOS.storage` 前必须声明 `storage.local`；需要剪贴板能力时，必须显式声明 `clipboard.read`、`clipboard.write` 或两者。调用仍受授权快照以及浏览器安全策略约束。
 
 预览窗口始终使用只读能力配置：不会继承项目声明的任何权限或网络白名单，只允许读取系统主题/状态/语言和窗口信息。通知、本地存储、修改窗口或主题、文件、桌面、剪贴板及网络调用都会被拒绝。要测试这些能力，应先通过安全检查和用户授权封装 App，再在正式窗口中运行。
+
+打包信息页可以选择是否允许其他用户解包。只有安装包声明允许解包，并且用户从 Developer Center 的“导入安装包”入口安装时，系统才会创建可查看、可编辑的源码项目；从桌面或文件 App 打开的安装包不会出现在 Developer Center。该选项控制 FluentOS 内的源码入口，不等同于加密或 DRM。
 
 获得 `storage.local` 权限后，每个自建 App 的私有 `FluentOS.storage` 使用独立命名空间，并按 UTF-8 大小执行以下配额：
 

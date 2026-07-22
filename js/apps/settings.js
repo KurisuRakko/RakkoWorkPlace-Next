@@ -11,8 +11,11 @@ const SettingsApp = {
     _developerModeVisible: false,
     // 与当前仓库 git log 同步；同一天的提交共同组成一个日期版本。
     aboutChangelog: [
+        { date: '2026-07-22', version: '2.4.260722', commits: [
+            { hash: 'local', title: '完成了FluentOS青山湖阶段性重要功能更新，优化了系统响应速度和稳定性。修复照片、天气 App 的细节问题。调整了 Fluent App 安装器以及开发者中心安装包导入、源码查看和解包权限与逻辑。文件上传功能移至隐私设置并默认开启；大幅度整改实验室选项，移除弹窗与通知 Demo，新增跨 App 拖放和智能多开 App 窗口；特别注意“灵翼交互”即将下线，若有需要，请及时下载当前源码。新增系统交互音效，完善开机、关机、重启、通知与弹窗音效。优化小组件抽屉中锁屏与桌面之间可连续打断的非线性景深动画，并修复图标、文件拖动误触发上传的问题。统一控制中心滑块和悬停高光，修复通知中心布局、滚动、居中显示及单条通知模糊淡出、平滑补位。优化了 Fingo 对话卡片的进退场动画，同时保证背景模糊同步。改进了云母效果，现在云母效果可以正常显示。调整了个性化高级页面设置的实时预览窗，视觉更加协调，同时支持背景滚动以查看效果。' }
+        ] },
         { date: '2026-07-21', version: '2.3.260721D', commits: [
-            { hash: 'local', title: '进一步清理了老旧无用代码，修复了部分已知BUG，提升了系统稳定性。' }
+            { hash: '258254b', title: '进一步清理了老旧无用代码，修复了部分已知BUG，提升了系统稳定性。' }
         ] },
         { date: '2026-07-20', version: '2.3.260720C', commits: [
             { hash: '86b835e', title: '修复了浏览器 App 被沙盒阻止本地存储，以及照片小组件切换到本机/收藏来源后无法加载、空库无提示的问题。新增第三方 PWA 与自建 App 的 storage.local 本地存储权限，覆盖制作、安装授权、安全校验、隔离读写和文档说明。' },
@@ -2283,7 +2286,25 @@ const SettingsApp = {
                 text-align: right;
             }
 
+            @property --material-preview-pan-y {
+                syntax: '<percentage>';
+                inherits: true;
+                initial-value: 0%;
+            }
+
+            @keyframes materialPreviewWallpaperPan {
+                0%, 100% {
+                    --material-preview-pan-y: 0%;
+                    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+                }
+                50% {
+                    --material-preview-pan-y: 100%;
+                    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+                }
+            }
+
             .material-preview {
+                --material-preview-pan-y: 0%;
                 position: relative;
                 height: 168px;
                 margin-bottom: 16px;
@@ -2292,6 +2313,7 @@ const SettingsApp = {
                 border: 1px solid var(--border-color);
                 background: linear-gradient(135deg, #d7ebff, #f8fbff 44%, #dbeafe);
                 box-shadow: var(--shadow-md);
+                animation: materialPreviewWallpaperPan 18s linear infinite;
             }
 
             .dark-mode .material-preview {
@@ -2306,8 +2328,13 @@ const SettingsApp = {
                     radial-gradient(circle at 78% 22%, rgba(255, 145, 77, 0.38), transparent 30%),
                     radial-gradient(circle at 52% 86%, rgba(105, 92, 255, 0.34), transparent 34%),
                     var(--fluent-wallpaper-url, linear-gradient(135deg, #d7ebff, #f8fbff));
-                background-size: cover;
-                background-position: center;
+                background-repeat: no-repeat;
+                background-size: auto, auto, auto, cover;
+                background-position:
+                    center,
+                    center,
+                    center,
+                    center var(--material-preview-pan-y);
             }
 
             .material-preview-panel {
@@ -2319,19 +2346,26 @@ const SettingsApp = {
                 transform: translate(-50%, -50%);
                 overflow: hidden;
                 border-radius: 22px;
-                border: 1px solid rgba(255, 255, 255, 0.58);
-                background: rgba(255, 255, 255, 0.42);
-                backdrop-filter: blur(var(--fluent-material-blur, 40px)) saturate(170%);
-                -webkit-backdrop-filter: blur(var(--fluent-material-blur, 40px)) saturate(170%);
-                box-shadow:
-                    0 18px 42px rgba(24, 68, 120, 0.18),
-                    inset 0 1px 0 rgba(255,255,255,0.74);
+                border: none;
+                background: transparent;
+                backdrop-filter: blur(var(--fluent-material-blur, 40px)) saturate(145%);
+                -webkit-backdrop-filter: blur(var(--fluent-material-blur, 40px)) saturate(145%);
+                box-shadow: 0 18px 42px rgba(24, 68, 120, 0.18);
+            }
+
+            .material-preview-gaussian .material-preview-panel::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                z-index: 0;
+                background: rgba(248, 250, 255, 0.72);
+                pointer-events: none;
             }
 
             .material-preview-mica .material-preview-panel {
-                background: rgba(238, 244, 255, 0.42);
-                backdrop-filter: blur(var(--fluent-mica-blur, 75px)) saturate(135%) brightness(1.04);
-                -webkit-backdrop-filter: blur(var(--fluent-mica-blur, 75px)) saturate(135%) brightness(1.04);
+                background: #f3f3f3;
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
             }
 
             .material-preview-mica .material-preview-panel::before {
@@ -2340,14 +2374,18 @@ const SettingsApp = {
                 inset: -42px;
                 z-index: 0;
                 background:
-                    radial-gradient(circle at 18% 24%, rgba(var(--accent-rgb, 0, 120, 212), 0.36), transparent 30%),
-                    radial-gradient(circle at 76% 26%, rgba(255, 145, 77, 0.28), transparent 32%),
-                    radial-gradient(circle at 54% 84%, rgba(105, 92, 255, 0.28), transparent 36%),
                     var(--fluent-wallpaper-url, linear-gradient(135deg, #d7ebff, #f8fbff));
                 background-size: cover;
-                background-position: center;
-                filter: blur(28px) saturate(145%);
-                transform: scale(1.08);
+                background-position: center var(--material-preview-pan-y);
+                filter: blur(24px) saturate(92%);
+                transform: scale(1.12);
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .material-preview {
+                    --material-preview-pan-y: 50%;
+                    animation: none;
+                }
             }
 
             .material-preview-mica .material-preview-panel::after {
@@ -2355,28 +2393,32 @@ const SettingsApp = {
                 position: absolute;
                 inset: 0;
                 z-index: 0;
-                background: linear-gradient(135deg, rgba(255,255,255,0.64), rgba(255,255,255,0.34));
+                background:
+                    linear-gradient(135deg, rgba(255,255,255,0.34), rgba(225,232,242,0.12)),
+                    rgba(243, 246, 250, 0.84);
                 pointer-events: none;
             }
 
             .dark-mode .material-preview-panel {
-                border-color: rgba(255, 255, 255, 0.16);
-                background: rgba(28, 31, 38, 0.58);
-                box-shadow:
-                    0 22px 48px rgba(0, 0, 0, 0.48),
-                    inset 0 1px 0 rgba(255,255,255,0.16);
+                box-shadow: 0 22px 48px rgba(0, 0, 0, 0.48);
+            }
+
+            .dark-mode .material-preview-gaussian .material-preview-panel::after {
+                background: rgba(10, 12, 16, 0.70);
             }
 
             .dark-mode .material-preview-mica .material-preview-panel {
-                background: rgba(18, 22, 30, 0.54);
+                background: #202020;
             }
 
             .dark-mode .material-preview-mica .material-preview-panel::before {
-                filter: blur(28px) saturate(125%) brightness(0.72);
+                filter: blur(24px) saturate(88%) brightness(0.74);
             }
 
             .dark-mode .material-preview-mica .material-preview-panel::after {
-                background: linear-gradient(135deg, rgba(30,34,42,0.72), rgba(10,12,18,0.48));
+                background:
+                    linear-gradient(135deg, rgba(64,69,80,0.22), rgba(0,0,0,0.20)),
+                    rgba(28, 30, 35, 0.86);
             }
 
             .material-preview-title {
@@ -3448,6 +3490,23 @@ const SettingsApp = {
             })
         }));
 
+        privacySection.appendChild(FluentUI.SettingItem({
+            label: t('settings.file-upload'),
+            description: t('settings.file-upload-desc'),
+            control: FluentUI.Toggle({
+                checked: State.settings.enableExternalFileImport === true,
+                onChange: (v) => {
+                    State.updateSettings({ enableExternalFileImport: v });
+                    this.addRecentSetting(t('settings.file-upload'), v ? t('settings.on') : t('settings.off'), 'privacy');
+                    State.addNotification({
+                        title: t('settings.privacy-title'),
+                        message: v ? t('settings.file-upload-on') : t('settings.file-upload-off'),
+                        type: 'info'
+                    });
+                }
+            })
+        }));
+
         const strictCspItem = FluentUI.SettingItem({
             label: t('settings.strict-csp'),
             description: t('settings.strict-csp-desc'),
@@ -4143,6 +4202,26 @@ const SettingsApp = {
 
         let blurItem = null;
 
+        const setMaterialMode = (value) => {
+            State.updateSettings({ materialType: value });
+            preview.className = `material-preview material-preview-${value}`;
+            preview.querySelector('.material-preview-subtitle').textContent = materialLabels[value] || value;
+            if (blurItem) {
+                const isMica = value === 'mica';
+                blurItem.classList.toggle('settings-mica-hidden', isMica);
+                const blurSlider = blurItem.querySelector('.fluent-slider');
+                const blurSliderWrapper = blurItem.querySelector('.fluent-slider-wrapper');
+                if (blurSlider) blurSlider.disabled = isMica;
+                if (blurSliderWrapper) blurSliderWrapper.classList.toggle('fluent-slider-disabled', isMica);
+            }
+            this.addRecentSetting(t('settings.material'), materialLabels[value] || value, 'personalization');
+            State.addNotification({
+                title: t('settings.material'),
+                message: t('settings.material.changed', { material: materialLabels[value] || value }),
+                type: 'success'
+            });
+        };
+
         section.appendChild(FluentUI.SettingItem({
             label: t('settings.material'),
             description: t('settings.material.desc'),
@@ -4152,25 +4231,7 @@ const SettingsApp = {
                     { value: 'gaussian', label: t('settings.material.gaussian') },
                     { value: 'mica', label: t('settings.material.mica') }
                 ],
-                onChange: (value) => {
-                    State.updateSettings({ materialType: value });
-                    preview.className = `material-preview material-preview-${value}`;
-                    preview.querySelector('.material-preview-subtitle').textContent = materialLabels[value] || value;
-                    if (blurItem) {
-                        const isMica = value === 'mica';
-                        blurItem.classList.toggle('settings-mica-hidden', isMica);
-                        const blurSlider = blurItem.querySelector('.fluent-slider');
-                        const blurSliderWrapper = blurItem.querySelector('.fluent-slider-wrapper');
-                        if (blurSlider) blurSlider.disabled = isMica;
-                        if (blurSliderWrapper) blurSliderWrapper.classList.toggle('fluent-slider-disabled', isMica);
-                    }
-                    this.addRecentSetting(t('settings.material'), materialLabels[value] || value, 'personalization');
-                    State.addNotification({
-                        title: t('settings.material'),
-                        message: t('settings.material.changed', { material: materialLabels[value] || value }),
-                        type: 'success'
-                    });
-                }
+                onChange: setMaterialMode
             })
         }));
 
@@ -4243,23 +4304,73 @@ const SettingsApp = {
             })
         }));
         
-        // 外部文件导入（拖拽/上传）开关
+        // 墓碑后台实验选项
         section.appendChild(FluentUI.SettingItem({
-            label: t('settings.lab-file-import'),
-            description: t('settings.lab-file-import-desc'),
+            label: t('settings.tombstone-freeze-delay'),
+            description: t('settings.tombstone-freeze-delay-desc'),
+            control: this.createTombstoneFreezeDelayControl()
+        }));
+
+        section.appendChild(FluentUI.SettingItem({
+            label: t('settings.tombstone-dim-frozen-apps'),
+            description: t('settings.tombstone-dim-frozen-apps-desc'),
             control: FluentUI.Toggle({
-                checked: State.settings.enableExternalFileImport === true,
+                checked: State.settings.tombstoneDimFrozenAppsEnabled === true,
                 onChange: (v) => {
-                    State.updateSettings({ enableExternalFileImport: v });
-                    this.addRecentSetting(t('settings.lab-file-import'), v ? t('settings.on') : t('settings.off'), 'lab');
+                    State.updateSettings({ tombstoneDimFrozenAppsEnabled: v });
+                    this.addRecentSetting(t('settings.tombstone-dim-frozen-apps'), v ? t('settings.on') : t('settings.off'), 'lab');
                     State.addNotification({
                         title: t('settings.lab-title'),
-                        message: `${t('settings.lab-file-import')}：${v ? t('settings.on') : t('settings.off')}`,
+                        message: v ? t('settings.tombstone-dim-frozen-apps-on') : t('settings.tombstone-dim-frozen-apps-off'),
                         type: 'info'
                     });
                 }
             })
         }));
+
+        const experimentalToggles = [
+            {
+                key: 'enableSystemInteractionAudio',
+                label: 'settings.lab-system-interaction-audio',
+                description: 'settings.lab-system-interaction-audio-desc',
+                enabledMessage: 'settings.lab-system-interaction-audio-on',
+                disabledMessage: 'settings.lab-system-interaction-audio-off'
+            },
+            {
+                key: 'enableCrossAppDragDrop',
+                label: 'settings.lab-cross-app-drop',
+                description: 'settings.lab-cross-app-drop-desc',
+                enabledMessage: 'settings.lab-cross-app-drop-on',
+                disabledMessage: 'settings.lab-cross-app-drop-off'
+            },
+            {
+                key: 'enableAppMultiWindow',
+                label: 'settings.lab-multi-window',
+                description: 'settings.lab-multi-window-desc',
+                enabledMessage: 'settings.lab-multi-window-on',
+                disabledMessage: 'settings.lab-multi-window-off'
+            }
+        ];
+
+        experimentalToggles.forEach((item) => {
+            section.appendChild(FluentUI.SettingItem({
+                label: t(item.label),
+                description: t(item.description),
+                control: FluentUI.Toggle({
+                    checked: State.settings[item.key] === true,
+                    onChange: (value) => {
+                        State.updateSettings({ [item.key]: value });
+                        this.addRecentSetting(t(item.label), value ? t('settings.on') : t('settings.off'), 'lab');
+                        State.addNotification({
+                            title: t('settings.lab-title'),
+                            message: t(value ? item.enabledMessage : item.disabledMessage),
+                            type: 'info',
+                            playSound: item.key !== 'enableSystemInteractionAudio'
+                        });
+                    }
+                })
+            }));
+        });
 
         // 强制始终实时模糊开关(默认关闭:桌面小组件使用静态模糊贴图降低 GPU 压力)
         section.appendChild(FluentUI.SettingItem({
@@ -4282,14 +4393,14 @@ const SettingsApp = {
         // ========== 灵翼交互 ==========
         const lingyiSection = this.createSection(t('settings.lingyi'));
         
-        // 灵翼交互功能说明
+        // 灵翼交互停维说明
         const lingyiNotice = document.createElement('div');
         lingyiNotice.className = 'lab-notice lingyi-notice';
         lingyiNotice.innerHTML = `
-            <img src="Theme/Icon/Symbol_icon/stroke/Stars A.svg" alt="" style="width: 20px; height: 20px; opacity: 0.7;">
-            <span style="font-size: 13px; color: var(--text-secondary);">${t('settings.lingyi-notice')}</span>
+            <img src="Theme/Icon/Symbol_icon/stroke/Exclamation Triangle.svg" alt="" style="width: 20px; height: 20px; opacity: 0.8;">
+            <span style="display:grid; gap:3px; font-size:13px; color:var(--text-secondary);"><strong style="color:#c42b1c;">${t('settings.lingyi-deprecated')}</strong><span>${t('settings.lingyi-notice')}</span></span>
         `;
-        lingyiNotice.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: rgba(100, 180, 255, 0.1); border-radius: var(--radius-md); margin-bottom: 16px;';
+        lingyiNotice.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: color-mix(in srgb, #c42b1c 9%, var(--bg-secondary)); border: 1px solid color-mix(in srgb, #c42b1c 24%, var(--border-color)); border-radius: var(--radius-md); margin-bottom: 16px;';
         lingyiSection.appendChild(lingyiNotice);
         
         // 灵翼交互主开关
@@ -4306,14 +4417,16 @@ const SettingsApp = {
                             State.addNotification({
                                 title: t('settings.lingyi'),
                                 message: t('settings.lingyi-started'),
-                                type: 'success'
+                                type: 'success',
+                                playSound: false
                             });
                         } else {
                             LingYi.stop();
                             State.addNotification({
                                 title: t('settings.lingyi'),
                                 message: t('settings.lingyi-stopped'),
-                                type: 'info'
+                                type: 'info',
+                                playSound: false
                             });
                         }
                         this.addRecentSetting(t('settings.lingyi'), v ? t('settings.on') : t('settings.off'), 'lab');
@@ -4406,145 +4519,9 @@ const SettingsApp = {
             lingyiSection.appendChild(usageGuide);
         }
         
-        container.appendChild(lingyiSection);
         container.appendChild(section);
-        
-        // 组件演示区域
-        const demoSection = this.createSection(t('settings.demo-section'));
-
-        // Dialog 对话框演示
-        section.appendChild(FluentUI.SettingItem({
-            label: t('settings.demo-dialog'),
-            description: t('settings.demo-dialog-desc'),
-            control: FluentUI.Button({
-                text: t('settings.demo'),
-                variant: 'secondary',
-                onClick: () => {
-                    FluentUI.Dialog({
-                        type: 'info',
-                        title: t('settings.demo-dialog-title'),
-                        content: t('settings.demo-dialog-content'),
-                        buttons: [
-                            { text: t('cancel'), variant: 'secondary', value: 'cancel' },
-                            { text: t('settings.demo-learn-more'), variant: 'secondary', value: 'more' },
-                            { text: t('ok'), variant: 'primary', value: 'ok' }
-                        ],
-                        onClose: (result) => {
-                            if (result) {
-                                FluentUI.Toast({
-                                    title: t('settings.demo-dialog-closed'),
-                                    message: t('settings.demo-clicked', { result }),
-                                    type: 'info'
-                                });
-                            }
-                        }
-                    });
-                }
-            })
-        }));
-
-        // Toast 通知演示
-        section.appendChild(FluentUI.SettingItem({
-            label: t('settings.demo-toast'),
-            description: t('settings.demo-toast-desc'),
-            control: FluentUI.Button({
-                text: t('settings.demo'),
-                variant: 'secondary',
-                onClick: () => {
-                    const types = ['info', 'success', 'warning', 'error'];
-                    const messages = {
-                        info: { title: t('settings.demo-toast-info'), message: t('settings.demo-toast-info-msg') },
-                        success: { title: t('settings.demo-toast-success'), message: t('settings.demo-toast-success-msg') },
-                        warning: { title: t('settings.demo-toast-warning'), message: t('settings.demo-toast-warning-msg') },
-                        error: { title: t('settings.demo-toast-error'), message: t('settings.demo-toast-error-msg') }
-                    };
-                    const type = types[Math.floor(Math.random() * types.length)];
-                    FluentUI.Toast({
-                        title: messages[type].title,
-                        message: messages[type].message,
-                        type: type,
-                        duration: 5000
-                    });
-                }
-            })
-        }));
-
-        // 警告对话框演示
-        section.appendChild(FluentUI.SettingItem({
-            label: t('settings.demo-warning-dialog'),
-            description: t('settings.demo-warning-desc'),
-            control: FluentUI.Button({
-                text: t('settings.demo'),
-                variant: 'secondary',
-                onClick: () => {
-                    FluentUI.Dialog({
-                        type: 'warning',
-                        title: t('settings.demo-confirm-action'),
-                        content: t('settings.demo-confirm-content'),
-                        buttons: [
-                            { text: t('cancel'), variant: 'secondary', value: false },
-                            { text: t('settings.demo-continue'), variant: 'primary', value: true }
-                        ],
-                        onClose: (result) => {
-                            if (result === true) {
-                                FluentUI.Toast({ title: t('settings.demo-confirmed'), message: t('settings.demo-confirmed-msg'), type: 'success' });
-                            } else if (result === false) {
-                                FluentUI.Toast({ title: t('settings.demo-cancelled'), message: t('settings.demo-cancelled-msg'), type: 'info' });
-                            }
-                        }
-                    });
-                }
-            })
-        }));
-        
-        // 错误对话框演示
-        section.appendChild(FluentUI.SettingItem({
-            label: t('settings.demo-error-dialog'),
-            description: t('settings.demo-error-desc'),
-            control: FluentUI.Button({
-                text: t('settings.demo'),
-                variant: 'secondary',
-                onClick: () => {
-                    FluentUI.Dialog({
-                        type: 'error',
-                        title: t('settings.demo-error-title'),
-                        content: t('settings.demo-error-content'),
-                        buttons: [
-                            { text: t('ok'), variant: 'primary' }
-                        ]
-                    });
-                }
-            })
-        }));
-
-        // 输入对话框演示
-        section.appendChild(FluentUI.SettingItem({
-            label: t('settings.demo-input-dialog'),
-            description: t('settings.demo-input-desc'),
-            control: FluentUI.Button({
-                text: t('settings.demo'),
-                variant: 'secondary',
-                onClick: () => {
-                    FluentUI.InputDialog({
-                        title: t('settings.demo-input-title'),
-                        placeholder: t('settings.demo-input-placeholder'),
-                        defaultValue: '',
-                        minLength: 2,
-                        validateFn: (value) => {
-                            if (value.length < 2) return t('settings.demo-input-validate');
-                            return true;
-                        },
-                        onConfirm: (value) => {
-                            FluentUI.Toast({
-                                title: t('settings.demo-input-success'),
-                                message: t('settings.demo-input-hello', { name: value }),
-                                type: 'success'
-                            });
-                        }
-                    });
-                }
-            })
-        }));
+        // 已停止维护的灵翼交互始终位于实验室最底部。
+        container.appendChild(lingyiSection);
     },
 
     // 应用排序状态
@@ -5279,29 +5256,6 @@ const SettingsApp = {
                     State.addNotification({
                         title: t('settings.developer-title'),
                         message: v ? t('settings.debug-mode-on') : t('settings.debug-mode-off'),
-                        type: 'info'
-                    });
-                }
-            })
-        }));
-
-        section.appendChild(FluentUI.SettingItem({
-            label: t('settings.tombstone-freeze-delay'),
-            description: t('settings.tombstone-freeze-delay-desc'),
-            control: this.createTombstoneFreezeDelayControl()
-        }));
-
-        section.appendChild(FluentUI.SettingItem({
-            label: t('settings.tombstone-dim-frozen-apps'),
-            description: t('settings.tombstone-dim-frozen-apps-desc'),
-            control: FluentUI.Toggle({
-                checked: State.settings.tombstoneDimFrozenAppsEnabled === true,
-                onChange: (v) => {
-                    State.updateSettings({ tombstoneDimFrozenAppsEnabled: v });
-                    this.addRecentSetting(t('settings.tombstone-dim-frozen-apps'), v ? t('settings.on') : t('settings.off'), 'developer');
-                    State.addNotification({
-                        title: t('settings.developer-title'),
-                        message: v ? t('settings.tombstone-dim-frozen-apps-on') : t('settings.tombstone-dim-frozen-apps-off'),
                         type: 'info'
                     });
                 }

@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="css/fingo.css">
     <link rel="stylesheet" href="css/oobe.css">
     <link rel="stylesheet" href="css/widgets.css">
+    <link rel="stylesheet" href="css/mica.css">
 </head>
 <body>
     <!-- 主容器 -->
@@ -408,7 +409,7 @@
             <div class="control-center hidden" id="control-center">
                 <div class="control-center-grid">
                     <!-- Wi-Fi -->
-                    <div class="control-tile control-tile-large" id="wifi-tile" data-active="true">
+                    <div class="control-tile control-tile-large" id="wifi-tile" data-active="true" role="button" tabindex="0">
                         <img src="Theme/Icon/Symbol_icon/stroke/Broadcast.svg" alt="Wi-Fi" class="tile-icon icon-stroke">
                         <img src="Theme/Icon/Symbol_icon/fill/Broadcast.svg" alt="Wi-Fi" class="tile-icon icon-fill">
                         <div class="tile-label">
@@ -417,7 +418,7 @@
                         </div>
                     </div>
                     <!-- 蓝牙 -->
-                    <div class="control-tile control-tile-large" id="bluetooth-tile" data-active="false">
+                    <div class="control-tile control-tile-large" id="bluetooth-tile" data-active="false" role="button" tabindex="0">
                         <div class="tile-icon-container">
                             <img src="Theme/Icon/Symbol_icon/stroke/Bluetooth_close.svg" alt="蓝牙" class="bluetooth-icon-off">
                             <img src="Theme/Icon/Symbol_icon/stroke/Bluetooth_open.svg" alt="蓝牙" class="bluetooth-icon-on">
@@ -428,7 +429,7 @@
                         </div>
                     </div>
                     <!-- 深色模式 -->
-                    <div class="control-tile control-tile-large" id="theme-tile" data-active="false">
+                    <div class="control-tile control-tile-large" id="theme-tile" data-active="false" role="button" tabindex="0">
                         <img src="Theme/Icon/Symbol_icon/stroke/Moon.svg" alt="深色模式" class="tile-icon icon-stroke">
                         <img src="Theme/Icon/Symbol_icon/fill/Moon.svg" alt="深色模式" class="tile-icon icon-fill">
                         <div class="tile-label">
@@ -436,7 +437,7 @@
                         </div>
                     </div>
                     <!-- 模糊效果 -->
-                    <div class="control-tile control-tile-large" id="blur-tile" data-active="true">
+                    <div class="control-tile control-tile-large" id="blur-tile" data-active="true" role="button" tabindex="0">
                         <img src="Theme/Icon/Symbol_icon/stroke/Eye.svg" alt="模糊" class="tile-icon icon-stroke">
                         <img src="Theme/Icon/Symbol_icon/fill/Eye.svg" alt="模糊" class="tile-icon icon-fill">
                         <div class="tile-label">
@@ -444,7 +445,7 @@
                         </div>
                     </div>
                     <!-- 动画 -->
-                    <div class="control-tile control-tile-large" id="animation-tile" data-active="true">
+                    <div class="control-tile control-tile-large" id="animation-tile" data-active="true" role="button" tabindex="0">
                         <img src="Theme/Icon/Symbol_icon/stroke/Stars A.svg" alt="动画" class="tile-icon icon-stroke">
                         <img src="Theme/Icon/Symbol_icon/fill/Stars A.svg" alt="动画" class="tile-icon icon-fill">
                         <div class="tile-label">
@@ -456,14 +457,14 @@
                 <!-- 音量滑块 -->
                 <div class="control-slider">
                     <img src="Theme/Icon/Symbol_icon/stroke/Volume Up.svg" alt="音量">
-                    <input type="range" id="volume-slider" min="0" max="100" value="50">
+                    <input class="fluent-slider" type="range" id="volume-slider" min="0" max="100" value="50" aria-label="音量">
                     <span id="volume-value">50</span>
                 </div>
                 
                 <!-- 亮度滑块 -->
                 <div class="control-slider">
                     <img src="Theme/Icon/Symbol_icon/stroke/Sun.svg" alt="亮度">
-                    <input type="range" id="brightness-slider" min="20" max="100" value="100">
+                    <input class="fluent-slider" type="range" id="brightness-slider" min="20" max="100" value="100" aria-label="亮度">
                     <span id="brightness-value">100</span>
                 </div>
             </div>
@@ -501,6 +502,8 @@
     <script src="js/core/search-history.js"></script>
     <script src="js/core/favorite-sites.js"></script>
     <script src="js/core/file-import.js"></script>
+    <script src="js/core/system-interaction-audio.js"></script>
+    <script src="js/core/cross-app-drag.js"></script>
     <script src="js/core/lingyi.js"></script>
     <script src="js/core/resource-manifest.js"></script>
     <script src="js/core/storage-manifest.js"></script>

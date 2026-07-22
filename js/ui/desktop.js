@@ -578,7 +578,7 @@ const Desktop = {
             el.draggable = true;
             const imagePreview = this.getDesktopImagePreview(node);
             const icon = imagePreview || this.getDesktopIcon(node);
-            el.innerHTML = `<img${imagePreview ? ' class="desktop-icon-image-preview"' : ''} src="${icon}" alt="${node.name}"><span>${node.name}</span>`;
+            el.innerHTML = `<img${imagePreview ? ' class="desktop-icon-image-preview"' : ''} src="${icon}" alt="${node.name}" draggable="false"><span>${node.name}</span>`;
             // 计算位置：图标居中放在所属格子上
             const x = grid.marginX + cell.col * grid.pitch + iconOffset;
             const y = grid.marginTop + cell.row * grid.pitch + iconOffset;
@@ -729,23 +729,24 @@ const Desktop = {
                 if (!node) return;
                 if (node.type === 'app') {
                     // 应用快捷方式：直接打开对应 App
-                    WindowManager.openApp(node.appId);
+                    WindowManager.openApp(node.appId, null, { source: 'desktop' });
                     return;
                 }
                 if (node.type === 'folder') {
-                    WindowManager.openApp('files');
+                    WindowManager.openApp('files', null, { source: 'desktop' });
                     // 延时导航到该文件夹
                     setTimeout(() => {
-                        if (typeof FilesApp !== 'undefined') {
-                            FilesApp.navigateToId(nodeId);
+                        const filesComponent = WindowManager.getAppComponent?.('files');
+                        if (filesComponent?.navigateToId) {
+                            filesComponent.navigateToId(nodeId);
                         }
                     }, 0);
                 } else if (node.type === 'file') {
                     if (typeof FilesApp !== 'undefined' && typeof FilesApp.openNodeWithDefaultApp === 'function') {
-                        const opened = FilesApp.openNodeWithDefaultApp(node);
+                        const opened = FilesApp.openNodeWithDefaultApp(node, { source: 'desktop' });
                         if (opened) return;
                     }
-                    WindowManager.openApp('notes', { fileId: node.id });
+                    WindowManager.openApp('notes', { fileId: node.id }, { source: 'desktop' });
                 }
             }
         });
@@ -963,7 +964,7 @@ const Desktop = {
 
     openApp(appId) {
         // 通过 WindowManager 打开应用窗口
-        WindowManager.openApp(appId);
+        WindowManager.openApp(appId, null, { source: 'desktop' });
     },
 
     /** 把 App 快捷方式固定到桌面（任务栏图标拖拽到桌面时调用） */
@@ -1169,7 +1170,8 @@ const Desktop = {
                 State.addNotification({
                     title: t('desktop.menu.refresh'),
                     message: t('desktop.refreshed'),
-                    type: 'info'
+                    type: 'info',
+                    playSound: false
                 });
                 break;
             case 'new-folder': {

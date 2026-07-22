@@ -8,6 +8,7 @@ const Fingo = {
     historyEl: null,
     contextMenuEl: null,
     _cardAnimTimer: null,
+    _panelAnimTimer: null,
     isOpen: false,
     conversations: [],
     currentId: null,
@@ -40,6 +41,8 @@ const Fingo = {
 
     show() {
         this.isOpen = true;
+        clearTimeout(this._panelAnimTimer);
+        this._panelAnimTimer = null;
         this._updateInputPlaceholder();
         if (typeof StartMenu !== 'undefined') StartMenu.close();
         if (typeof ControlCenter !== 'undefined') ControlCenter.close();
@@ -62,9 +65,12 @@ const Fingo = {
 
         if (State.settings.enableAnimation) {
             this.element.classList.add('fingo-closing');
-            setTimeout(() => {
+            clearTimeout(this._panelAnimTimer);
+            this._panelAnimTimer = setTimeout(() => {
+                if (this.isOpen) return;
                 this.element.classList.add('hidden');
                 this.element.classList.remove('fingo-closing');
+                this._panelAnimTimer = null;
             }, 200);
         } else {
             this.element.classList.add('hidden');
@@ -1475,14 +1481,14 @@ const Fingo = {
         const volumeSlider = document.getElementById('volume-slider');
         const volumeValue = document.getElementById('volume-value');
         if (volumeSlider && volumeValue) {
-            volumeSlider.value = State.settings.volume || 50;
-            volumeValue.textContent = State.settings.volume || 50;
+            volumeSlider.value = State.settings.volume ?? 50;
+            volumeValue.textContent = State.settings.volume ?? 50;
         }
         const brightnessSlider = document.getElementById('brightness-slider');
         const brightnessValue = document.getElementById('brightness-value');
         if (brightnessSlider && brightnessValue) {
-            brightnessSlider.value = State.settings.brightness || 100;
-            brightnessValue.textContent = State.settings.brightness || 100;
+            brightnessSlider.value = State.settings.brightness ?? 100;
+            brightnessValue.textContent = State.settings.brightness ?? 100;
         }
         if (typeof ControlCenter !== 'undefined' && typeof ControlCenter.updateTiles === 'function') {
             try {

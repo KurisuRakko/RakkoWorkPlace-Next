@@ -7,6 +7,7 @@ const AppInstallerApp = {
     importedApp: null,
     existingApp: null,
     installedApp: null,
+    installSource: 'external',
     _runToken: 0,
 
     _english() {
@@ -42,6 +43,7 @@ const AppInstallerApp = {
         this.importedApp = null;
         this.existingApp = null;
         this.installedApp = null;
+        this.installSource = 'external';
         if (this.container) this.container.classList.remove('app-installer-window-content');
         this.container = null;
         this.windowId = null;
@@ -54,6 +56,7 @@ const AppInstallerApp = {
         this.importedApp = null;
         this.existingApp = null;
         this.installedApp = null;
+        this.installSource = data?.source === 'developer-center' ? 'developer-center' : 'external';
         this._renderLoading(this._text('正在读取安装包…', 'Reading package…'));
         try {
             const file = await this._resolveFile(data);
@@ -195,7 +198,13 @@ const AppInstallerApp = {
 
     async _saveImportedApp(imported) {
         const next = { ...imported };
+        const packageProjectId = next.projectId;
         const existing = this.existingApp;
+        const importedThroughDeveloperCenter = this.installSource === 'developer-center';
+        const canExposeSource = importedThroughDeveloperCenter && next.allowUnpack === true;
+        const existingProject = existing?.projectId
+            ? await DeveloperCenterStore.get('projects', existing.projectId)
+            : null;
         if (existing) {
             next.id = existing.id;
             next.projectId = existing.projectId;
@@ -210,27 +219,40 @@ const AppInstallerApp = {
         next.network = DeveloperCenterStore.normalizeNetworkConfig(next.network);
         next.importedFromFap = true;
         next.permissionConsentRequired = true;
-        const project = await DeveloperCenterStore.saveProject({
-            id: next.projectId,
-            name: next.name,
-            type: next.type,
-            title: next.title,
-            description: next.description,
-            developer: next.developer,
-            developerHash: next.developerHash,
-            icon: next.icon,
-            url: next.url,
-            html: next.html,
-            css: next.css,
-            js: next.js,
-            forceFluentUI: next.forceFluentUI === true,
-            permissions: next.permissions,
-            network: next.network,
-            importedFromFap: true,
-            permissionConsentRequired: true,
-            sourcePackageId: next.sourcePackageId
-        });
-        next.projectId = project.id;
+        next.developerCenterVisible = importedThroughDeveloperCenter;
+        if (canExposeSource && existingProject && existingProject.importedFromFap !== true) {
+            // Reinstalling an App authored on this device must not overwrite or
+            // duplicate its original editable project.
+            next.projectId = existingProject.id;
+        } else if (canExposeSource) {
+            const project = await DeveloperCenterStore.saveProject({
+                id: existingProject?.importedFromFap === true ? existingProject.id : packageProjectId,
+                name: next.name,
+                type: next.type,
+                title: next.title,
+                description: next.description,
+                developer: next.developer,
+                developerHash: next.developerHash,
+                icon: next.icon,
+                url: next.url,
+                html: next.html,
+                css: next.css,
+                js: next.js,
+                forceFluentUI: next.forceFluentUI === true,
+                permissions: next.permissions,
+                network: next.network,
+                allowUnpack: true,
+                importedFromFap: true,
+                permissionConsentRequired: true,
+                sourcePackageId: next.sourcePackageId
+            });
+            next.projectId = project.id;
+        } else if (existingProject?.importedFromFap === true) {
+            await DeveloperCenterStore.remove('projects', existingProject.id);
+            next.projectId = packageProjectId;
+        } else if (!existingProject) {
+            next.projectId = packageProjectId;
+        }
         const app = await DeveloperCenterStore.saveApp(next);
         DeveloperCreatedRuntime.register(app);
         DeveloperCreatedRuntime.refreshShell();
@@ -242,7 +264,7 @@ const AppInstallerApp = {
         const replacing = !!this.existingApp;
         this._shell(`
             <div class="app-installer-complete">
-                <span class="app-installer-success" aria-hidden="true">✓</span>
+                <img class="app-installer-status-icon" src="Theme/Icon/Symbol_icon/colour/Installer Success.svg" alt="" aria-hidden="true">
                 <h1>${replacing ? this._text('覆盖安装完成', 'Replacement complete') : this._text('安装完成', 'Installation complete')}</h1>
                 <p>${replacing ? this._text(`${app.name} 已成功更新。`, `${app.name} was updated successfully.`) : this._text(`${app.name} 已成功安装到 Fluent。`, `${app.name} was installed successfully.`)}</p>
                 <label><input type="checkbox" data-installer-option="open"> <span>${this._text('完成后打开', 'Open when finished')}</span></label>
@@ -274,7 +296,7 @@ const AppInstallerApp = {
         const message = messages[reason] || messages.package;
         this._shell(`
             <div class="app-installer-blocked">
-                <span class="app-installer-error" aria-hidden="true">!</span>
+                <img class="app-installer-status-icon" src="Theme/Icon/Symbol_icon/colour/Installer Error.svg" alt="" aria-hidden="true">
                 <h1>${this._text('无法安装此 App', 'This App could not be installed')}</h1>
                 <p>${this._esc(message)}</p>
                 <p>${this._text('请与提供该 App 的开发者联系并报告该问题。', 'Contact the developer who provided this App and report the problem.')}</p>

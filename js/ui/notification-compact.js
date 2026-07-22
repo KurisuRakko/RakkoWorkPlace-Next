@@ -7,6 +7,7 @@ const NotificationCenter = {
     emptyElement: null,
     clearBtn: null,
     notificationTile: null,
+    scrollArea: null,
     isOpen: false,
 
     init() {
@@ -15,6 +16,17 @@ const NotificationCenter = {
         this.emptyElement = this.element.querySelector('.notification-empty');
         this.clearBtn = document.getElementById('notification-clear');
         this.notificationTile = document.getElementById('notification-tile');
+
+        if (this.notificationTile && this.listElement
+            && typeof FluentUI !== 'undefined' && typeof FluentUI.ScrollArea === 'function') {
+            this.scrollArea = FluentUI.ScrollArea({
+                content: this.listElement,
+                minThumbSize: 36,
+                alwaysVisible: true,
+                className: 'notification-list-scroll'
+            });
+            this.notificationTile.insertBefore(this.scrollArea, this.emptyElement);
+        }
 
         this.bindEvents();
         this.render();
@@ -68,11 +80,13 @@ const NotificationCenter = {
         this.listElement.innerHTML = '';
 
         if (State.notifications.length === 0) {
+            this.scrollArea?.classList.add('hidden');
             this.emptyElement.classList.remove('hidden');
             if (this.clearBtn) this.clearBtn.disabled = true;
             return;
         }
 
+        this.scrollArea?.classList.remove('hidden');
         this.emptyElement.classList.add('hidden');
         if (this.clearBtn) {
             this.clearBtn.disabled = !State.notifications.some(notification => notification.manualDismissOnly !== true);
@@ -82,6 +96,7 @@ const NotificationCenter = {
             const item = this.createNotificationItem(notification);
             this.listElement.appendChild(item);
         });
+        requestAnimationFrame(() => this.scrollArea?.refresh?.());
     },
 
     createNotificationItem(notification) {
@@ -109,8 +124,13 @@ const NotificationCenter = {
         item.querySelector('.notification-item-content').textContent = notification.message || '';
 
         const closeBtn = item.querySelector('.notification-item-close');
-        closeBtn.addEventListener('click', () => {
-            State.removeNotification(notification.id);
+        closeBtn.addEventListener('click', (event) => {
+            // Stop the original click before the item is removed. Otherwise the
+            // document-level outside-click handler sees the detached target and
+            // incorrectly closes the whole notification center.
+            event.preventDefault();
+            event.stopPropagation();
+            this.dismissNotification(notification.id, item);
         });
 
         if (notification.onClickAction) {
@@ -121,6 +141,31 @@ const NotificationCenter = {
         }
 
         return item;
+    },
+
+    dismissNotification(notificationId, item) {
+        if (!item || item.classList.contains('notification-item-removing')) return;
+
+        if (State.settings.enableAnimation === false) {
+            State.removeNotification(notificationId);
+            return;
+        }
+
+        const itemRect = item.getBoundingClientRect();
+        const itemStyle = getComputedStyle(item);
+        item.style.height = `${itemRect.height}px`;
+        item.style.marginBottom = itemStyle.marginBottom;
+        item.querySelector('.notification-item-close')?.setAttribute('disabled', '');
+
+        // Commit the measured start size before collapsing it. Shrinking the
+        // flex item makes every following notification move up in the same
+        // non-linear transition as the blur/fade.
+        void item.offsetHeight;
+        item.classList.add('notification-item-removing');
+
+        setTimeout(() => {
+            State.removeNotification(notificationId);
+        }, 360);
     },
 
     handleNotificationAction(notification) {
@@ -186,6 +231,7 @@ const NotificationCenter = {
         this.element.style.left = `${btnCenterX - panelRect.width / 2}px`;
         this.element.style.right = 'auto';
         this.element.style.visibility = 'visible';
+        requestAnimationFrame(() => this.scrollArea?.refresh?.());
         
         this.isOpen = true;
         btn.classList.add('active');

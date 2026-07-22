@@ -29,12 +29,14 @@
     z-index: 9500;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.5s ease;
+    transition: opacity 0.2s cubic-bezier(0.4, 0, 1, 1);
     overflow: visible;
 }
 
 #fingo-blur-layer.fingo-visible {
     opacity: 1;
+    transition-duration: 0.3s;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .blur-disabled #fingo-blur-layer {
@@ -104,25 +106,15 @@
     overflow: visible;
 }
 
-/*
- * IMPORTANT: animation is on #fingo-panel (the transparent wrapper),
- * NOT on .fingo-content. Applying `transform` via animation on the
- * element that has `backdrop-filter` breaks the blur — even
- * `transform: translateY(0) scale(1)` creates a new compositing
- * context that prevents backdrop-filter from seeing through.
- *
- * We use fill-mode `none` (not `both`/`forwards`) so that after
- * the animation finishes, the computed `transform` reverts to `none`.
- * If it stayed as `translateY(0) scale(1)` via forwards-fill, the
- * child's backdrop-filter would remain broken permanently.
- */
-body.animations-enabled #fingo-panel:not(.hidden) {
-    animation: fingoOpen 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
-    animation-fill-mode: none;
+/* Reuse the exact card motion shared by Control Center and Notification
+ * Center. Animate the glass card itself while keeping its wrapper
+ * transform-free, so the backdrop blur remains synchronized. */
+body.animations-enabled #fingo-panel:not(.hidden) > .fingo-content {
+    animation: controlCenterOpen 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-body.animations-enabled #fingo-panel.fingo-closing {
-    animation: fingoClose 0.22s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+body.animations-enabled #fingo-panel.fingo-closing > .fingo-content {
+    animation: controlCenterClose 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 /* ==========================================================
@@ -160,6 +152,7 @@ body.animations-enabled #fingo-panel.fingo-closing {
         box-shadow 0.44s cubic-bezier(0.22, 1, 0.36, 1),
         padding 0.44s cubic-bezier(0.22, 1, 0.36, 1),
         backdrop-filter 0.44s cubic-bezier(0.22, 1, 0.36, 1),
+        -webkit-backdrop-filter 0.44s cubic-bezier(0.22, 1, 0.36, 1),
         opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1);
     overflow: hidden;
 }
@@ -219,8 +212,8 @@ body.animations-enabled #fingo-panel.fingo-closing {
     background: transparent;
     border-color: transparent;
     box-shadow: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    backdrop-filter: blur(0) saturate(100%);
+    -webkit-backdrop-filter: blur(0) saturate(100%);
     overflow: visible;
 }
 
@@ -724,29 +717,6 @@ body.animations-enabled #fingo-panel.fingo-closing {
     0%   { transform: translateX(20px);  filter: blur(28px) hue-rotate(0deg); }
     50%  { transform: translateX(-20px); filter: blur(30px) hue-rotate(-50deg); }
     100% { transform: translateX(15px);  filter: blur(26px) hue-rotate(45deg); }
-}
-
-/* Panel open/close — no translateX(-50%) needed since we use margin:auto */
-@keyframes fingoOpen {
-    from {
-        opacity: 0;
-        transform: translateY(18px) scale(0.96);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-@keyframes fingoClose {
-    from {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-    to {
-        opacity: 0;
-        transform: translateY(18px) scale(0.96);
-    }
 }
 
 /* Rainbow border slide */

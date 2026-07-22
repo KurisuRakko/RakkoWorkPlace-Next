@@ -461,7 +461,7 @@ const StartMenu = {
             });
             return false;
         }
-        WindowManager.openApp(appId, data);
+        WindowManager.openApp(appId, data, { source: 'start-menu' });
         this.close();
         return true;
     },
@@ -718,14 +718,13 @@ const StartMenu = {
 
     openFolder(folderId) {
         const targetId = String(folderId || '');
-        WindowManager.openApp('files');
+        WindowManager.openApp('files', null, { source: 'start-menu' });
 
         setTimeout(() => {
             const node = typeof State.findNode === 'function' ? State.findNode(targetId) : null;
             if (node?.type === 'folder' &&
-                typeof FilesApp !== 'undefined' &&
-                typeof FilesApp.navigateToId === 'function') {
-                FilesApp.navigateToId(targetId);
+                WindowManager.getAppComponent?.('files')?.navigateToId) {
+                WindowManager.getAppComponent('files').navigateToId(targetId);
                 return;
             }
 
@@ -745,10 +744,10 @@ const StartMenu = {
 
         if (node?.type === 'file') {
             if (typeof FilesApp !== 'undefined' && typeof FilesApp.openNodeWithDefaultApp === 'function') {
-                const opened = FilesApp.openNodeWithDefaultApp(node);
+                const opened = FilesApp.openNodeWithDefaultApp(node, { source: 'start-menu' });
                 if (opened) return;
             }
-            WindowManager.openApp('notes', { fileId: id });
+            WindowManager.openApp('notes', { fileId: id }, { source: 'start-menu' });
             return;
         }
 
@@ -759,14 +758,14 @@ const StartMenu = {
 
         const normalizedPath = String(filePath || '').toLowerCase();
         if (/\.(?:txt|html?|md)$/.test(normalizedPath)) {
-            WindowManager.openApp('notes', { fileId: id });
+            WindowManager.openApp('notes', { fileId: id }, { source: 'start-menu' });
         } else {
-            WindowManager.openApp('files');
+            WindowManager.openApp('files', null, { source: 'start-menu' });
         }
     },
 
     showAllRecentFiles() {
-        WindowManager.openApp('files');
+        WindowManager.openApp('files', null, { source: 'start-menu' });
         this.close();
     },
 
@@ -857,9 +856,10 @@ const StartMenu = {
                     break;
                 case 'reveal-in-folder':
                     // 在文件资源管理器中定位该文件/文件夹
-                    WindowManager.openApp('files');
+                    WindowManager.openApp('files', null, { source: 'start-menu' });
                     setTimeout(() => {
-                        if (typeof FilesApp !== 'undefined' && FilesApp.navigateToId) {
+                        const filesComponent = WindowManager.getAppComponent?.('files');
+                        if (filesComponent?.navigateToId) {
                             // 如果是文件，先定位到父目录
                             let targetId = id;
                             const targetNode = State.findNode(id);
@@ -867,7 +867,7 @@ const StartMenu = {
                                 const parent = State.findParentNode(id);
                                 if (parent) targetId = parent.id;
                             }
-                            FilesApp.navigateToId(targetId, id); // 第二个参数用于高亮选中
+                            filesComponent.navigateToId(targetId, id); // 第二个参数用于高亮选中
                         }
                     }, 120);
                     this.close();

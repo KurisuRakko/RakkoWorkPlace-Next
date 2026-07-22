@@ -21,6 +21,9 @@ const BootScreen = {
     _hintSwitchTimer: null,
     _projectRootUrl: null,
     _resourceMetadata: null,
+    _bootRunId: 0,
+    _transitionedRunId: 0,
+    _startupSoundRunId: 0,
 
     init() {
         this.element = document.getElementById('boot-screen');
@@ -28,6 +31,7 @@ const BootScreen = {
     },
 
     show() {
+        const runId = ++this._bootRunId;
         const logo = this.element.querySelector('.boot-logo');
         if (logo) {
             logo.src = document.body.classList.contains('dark-mode')
@@ -50,13 +54,13 @@ const BootScreen = {
             && OOBE.shouldShowOnFirstLaunch();
 
         if (shouldShowOobe) {
-            this._bootIntoOobeWithEssentialAssets();
+            this._bootIntoOobeWithEssentialAssets(runId);
         } else {
-            this._bootReturningUser();
+            this._bootReturningUser(runId);
         }
     },
 
-    async _bootReturningUser() {
+    async _bootReturningUser(runId) {
         const wait = (duration) => new Promise((resolve) => setTimeout(resolve, duration));
         const pack = this._buildPriorityAssets();
         const criticalReady = (async () => {
@@ -71,20 +75,22 @@ const BootScreen = {
             wait(this.RETURNING_MAX_DURATION)
         ]);
 
-        this.fadeToLock();
+        if (runId !== this._bootRunId) return;
+        this.fadeToLock(runId);
         this._preloadAndWarmResourcePackInBackground({ skipLockWallpapers: true }).catch(() => {});
     },
 
-    async _bootIntoOobeWithEssentialAssets() {
+    async _bootIntoOobeWithEssentialAssets(runId) {
         let minWaitReached = false;
         let essentialsReady = false;
 
         const done = () => {
+            if (runId !== this._bootRunId) return;
             if (this._firstBootDone) return;
             this._firstBootDone = true;
             this._clearFirstBootTimers();
             this._hideFirstHint();
-            this.fadeToLock();
+            this.fadeToLock(runId);
         };
 
         const tryEnterEarly = () => {
@@ -717,12 +723,28 @@ const BootScreen = {
         await this._preloadGroup(pack.icons, 8);             // OOBE 中继续加载其余图标
         await this._preloadGroup(pack.aiScripts, 2);         // OOBE 中缓存 AI 组件脚本
     },
-    fadeToLock() {
+    _playStartupAfterEnter(runId, targetView) {
+        const play = () => {
+            if (runId !== this._bootRunId || this._transitionedRunId !== runId) return;
+            if (this._startupSoundRunId === runId || State.view !== targetView) return;
+            this._startupSoundRunId = runId;
+            if (typeof SystemInteractionAudio !== 'undefined') {
+                SystemInteractionAudio.playStartup();
+            }
+        };
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(play);
+        else setTimeout(play, 0);
+    },
+
+    fadeToLock(runId = this._bootRunId) {
+        if (runId !== this._bootRunId || this._transitionedRunId === runId) return;
+        this._transitionedRunId = runId;
         const shouldGoOobe = typeof OOBE !== 'undefined'
             && typeof OOBE.shouldShowOnFirstLaunch === 'function'
             && OOBE.shouldShowOnFirstLaunch();
         const shouldGoDesktop = !shouldGoOobe
             && !!(typeof State !== 'undefined' && State.settings && State.settings.debugModeEnabled === true);
+        const targetView = shouldGoOobe ? 'oobe' : (shouldGoDesktop ? 'desktop' : 'lock');
 
         const bootLogoEl = this.element ? this.element.querySelector('.boot-logo') : null;
         if (shouldGoOobe && typeof OOBE.show === 'function') {
@@ -738,7 +760,8 @@ const BootScreen = {
             : (shouldGoDesktop ? document.getElementById('desktop-screen') : document.getElementById('lock-screen'));
 
         if (!targetEl) {
-            State.view = shouldGoOobe ? 'oobe' : (shouldGoDesktop ? 'desktop' : 'lock');
+            State.view = targetView;
+            this._playStartupAfterEnter(runId, targetView);
             return;
         }
 
@@ -751,12 +774,14 @@ const BootScreen = {
         targetEl.style.opacity = '1';
 
         setTimeout(() => {
+            if (runId !== this._bootRunId || this._transitionedRunId !== runId) return;
             this.element.classList.add('hidden');
             this.element.style.transition = '';
             this.element.style.opacity = '';
             targetEl.style.transition = '';
             targetEl.style.opacity = '';
-            State.view = shouldGoOobe ? 'oobe' : (shouldGoDesktop ? 'desktop' : 'lock');
+            State.view = targetView;
+            this._playStartupAfterEnter(runId, targetView);
         }, 800);
     },
 

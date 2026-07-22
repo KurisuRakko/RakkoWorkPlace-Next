@@ -22,7 +22,9 @@ const ControlCenter = {
             if (updates.bluetoothEnabled !== undefined || 
                 updates.enableBlur !== undefined || 
                 updates.enableAnimation !== undefined ||
-                updates.theme !== undefined) {
+                updates.theme !== undefined ||
+                updates.volume !== undefined ||
+                updates.brightness !== undefined) {
                 this.updateTiles();
             }
         });
@@ -44,9 +46,19 @@ const ControlCenter = {
         // 更新动画标题
         const animationTitle = document.getElementById('animation-tile-title');
         if (animationTitle) animationTitle.textContent = t('control.animation');
+
+        document.getElementById('volume-slider')?.setAttribute('aria-label', t('control.volume'));
+        document.getElementById('brightness-slider')?.setAttribute('aria-label', t('control.brightness'));
     },
 
     bindEvents() {
+        this.element.addEventListener('keydown', (event) => {
+            const tile = event.target.closest?.('.control-tile[role="button"]');
+            if (!tile || (event.key !== 'Enter' && event.key !== ' ')) return;
+            event.preventDefault();
+            tile.click();
+        });
+
         // Wi-Fi 瓷贴
         const wifiTile = document.getElementById('wifi-tile');
         wifiTile.addEventListener('click', () => {
@@ -146,6 +158,7 @@ const ControlCenter = {
         volumeSlider.addEventListener('input', (e) => {
             const value = e.target.value;
             volumeValue.textContent = value;
+            this.syncSliderVisual(e.target);
             State.updateSettings({ volume: parseInt(value, 10) });
         });
 
@@ -155,7 +168,8 @@ const ControlCenter = {
         brightnessSlider.addEventListener('input', (e) => {
             const value = e.target.value;
             brightnessValue.textContent = value;
-            State.updateSettings({ brightness: parseInt(value) });
+            this.syncSliderVisual(e.target);
+            State.updateSettings({ brightness: parseInt(value, 10) });
         });
 
         // 点击外部关闭
@@ -209,13 +223,24 @@ const ControlCenter = {
         // 更新滑块值
         const volumeSlider = document.getElementById('volume-slider');
         const volumeValue = document.getElementById('volume-value');
-        volumeSlider.value = State.settings.volume || 50;
-        volumeValue.textContent = State.settings.volume || 50;
+        volumeSlider.value = State.settings.volume ?? 50;
+        volumeValue.textContent = State.settings.volume ?? 50;
+        this.syncSliderVisual(volumeSlider);
 
         const brightnessSlider = document.getElementById('brightness-slider');
         const brightnessValue = document.getElementById('brightness-value');
-        brightnessSlider.value = State.settings.brightness || 100;
-        brightnessValue.textContent = State.settings.brightness || 100;
+        brightnessSlider.value = State.settings.brightness ?? 100;
+        brightnessValue.textContent = State.settings.brightness ?? 100;
+        this.syncSliderVisual(brightnessSlider);
+    },
+
+    syncSliderVisual(slider) {
+        if (!slider) return;
+        const min = Number(slider.min || 0);
+        const max = Number(slider.max || 100);
+        const value = Number(slider.value || 0);
+        const progress = Math.max(0, Math.min(100, ((value - min) / Math.max(1, max - min)) * 100));
+        slider.style.setProperty('--fluent-slider-progress', `${progress}%`);
     },
 
     toggle() {
@@ -227,6 +252,8 @@ const ControlCenter = {
     },
 
     open() {
+        this.updateTiles();
+
         // 计算控制中心按钮位置
         const btn = document.getElementById('control-center-btn');
         const btnRect = btn.getBoundingClientRect();

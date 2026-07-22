@@ -164,7 +164,7 @@ const FilesApp = {
         this._langHandler = () => this.render();
         this._subscribeState('languageChange', this._langHandler);
 
-        // 监听实验室开关变化：动态显示/隐藏“上传”按钮与外部拖拽导入
+        // 监听隐私页“文件上传”开关：动态显示/隐藏上传入口与外部拖拽导入
         this._settingsHandler = (updates) => {
             if (updates && Object.prototype.hasOwnProperty.call(updates, 'enableExternalFileImport')) {
                 this.render();
@@ -1434,7 +1434,7 @@ const FilesApp = {
         if (this.isImageNode(node)) {
             const preview = this.getImagePreviewSrc(node);
             if (preview) {
-                return `<img class="file-item-image-preview" src="${preview}" alt="${node.name}">`;
+                return `<img class="file-item-image-preview" src="${preview}" alt="${node.name}" draggable="false">`;
             }
         }
         if (node.type === 'app') {
@@ -1442,15 +1442,15 @@ const FilesApp = {
                 ? Desktop.getDesktopIcon(node)
                 : '';
             const appIcon = desktopIcon || WindowManager.getAppConfig?.(node.appId)?.icon || 'Theme/Icon/App_icon/app_error.png';
-            return `<img src="${appIcon}" alt="${node.name}">`;
+            return `<img src="${appIcon}" alt="${node.name}" draggable="false">`;
         }
         if (node.type === 'file' && String(node.name || '').toLowerCase().endsWith('.fap')) {
-            return `<img src="Theme/Icon/App_icon/App_package.png" alt="${node.name}">`;
+            return `<img src="Theme/Icon/App_icon/App_package.png" alt="${node.name}" draggable="false">`;
         }
         const icon = node.type === 'folder'
             ? 'Theme/Icon/Symbol_icon/stroke/Folder.svg'
             : 'Theme/Icon/Symbol_icon/stroke/File.svg';
-        return `<img src="${icon}" alt="${node.name}">`;
+        return `<img src="${icon}" alt="${node.name}" draggable="false">`;
     },
 
     renderFileList() {
@@ -1749,26 +1749,26 @@ const FilesApp = {
         this.openNodeWithDefaultApp(node);
     },
     
-    openNodeWithDefaultApp(node) {
+    openNodeWithDefaultApp(node, launchOptions = {}) {
         if (!node || node.type !== 'file' || typeof WindowManager === 'undefined') return false;
 
         if (this.isImageNode(node)) {
-            WindowManager.openApp('photos', { fileId: node.id });
+            WindowManager.openApp('photos', { fileId: node.id }, launchOptions);
             return true;
         }
 
         // Route imported file types to their system default Apps.
         const ext = String(node.name || '').split('.').pop().toLowerCase();
         if (ext === 'fap') {
-            WindowManager.openApp('app-installer', { fileId: node.id });
+            WindowManager.openApp('app-installer', { fileId: node.id }, launchOptions);
             return true;
         }
         if (ext === 'mp3') {
-            WindowManager.openApp('media', { fileId: node.id });
+            WindowManager.openApp('media', { fileId: node.id }, launchOptions);
             return true;
         }
         if (ext === 'txt' || ext === 'md') {
-            WindowManager.openApp('notes', { fileId: node.id });
+            WindowManager.openApp('notes', { fileId: node.id }, launchOptions);
             return true;
         }
         return false;
@@ -1905,7 +1905,7 @@ const FilesApp = {
         // 允许放置
         dropZone.addEventListener('dragover', (e) => {
             const internal = hasFluentPayload(e.dataTransfer);
-            const external = externalEnabled() && (hasExternalFiles(e.dataTransfer) || !internal);
+            const external = externalEnabled() && !internal && hasExternalFiles(e.dataTransfer);
             if (!internal && !external) return;
             e.preventDefault();
             e.stopPropagation();
@@ -1921,7 +1921,7 @@ const FilesApp = {
         
         dropZone.addEventListener('drop', (e) => {
             const internal = hasFluentPayload(e.dataTransfer);
-            const external = externalEnabled() && (hasExternalFiles(e.dataTransfer) || !internal);
+            const external = externalEnabled() && !internal && hasExternalFiles(e.dataTransfer);
             if (!internal && !external) return;
             e.preventDefault();
             e.stopPropagation();

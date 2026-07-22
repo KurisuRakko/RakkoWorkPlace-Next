@@ -203,6 +203,8 @@ document.addEventListener('DOMContentLoaded', () => {
  * 初始化所有模块
  */
 function initModules() {
+    initNativeImageDragGuard();
+
     // UI模块
     BootScreen.init();
     if (typeof OOBE !== 'undefined' && typeof OOBE.init === 'function') {
@@ -217,6 +219,7 @@ function initModules() {
     NotificationCenter.init();
     if (typeof ClockReminderService !== 'undefined') { ClockReminderService.init(); }
     WindowManager.init();
+    if (typeof CrossAppDrag !== 'undefined') { CrossAppDrag.init(); }
     if (typeof DeveloperCenterController !== 'undefined') { DeveloperCenterController.init(); }
     if (typeof FavoriteSites !== 'undefined') { FavoriteSites.init(); }
     if (typeof TaskView !== 'undefined') { TaskView.init(); }
@@ -292,6 +295,11 @@ function initGlobalFileDragOverlay() {
     const isOsFileDrag = (e) => {
         const dt = e && e.dataTransfer;
         if (!dt) return false;
+        const types = Array.from(dt.types || []).map((v) => String(v || '').toLowerCase());
+        // FluentOS file/App entries can expose a browser-generated File item
+        // when their artwork is an <img>. The explicit internal payload always
+        // wins so those drags never enter the upload flow.
+        if (types.includes('application/fluent-file')) return false;
         const files = dt.files;
         if (files && files.length > 0) return true;
         const items = dt.items;
@@ -300,7 +308,6 @@ function initGlobalFileDragOverlay() {
                 if (item && item.kind === 'file') return true;
             }
         }
-        const types = Array.from(dt.types || []).map((v) => String(v || '').toLowerCase());
         return types.includes('files') || types.includes('application/x-moz-file');
     };
     const externalImportEnabled = () => {
@@ -814,6 +821,9 @@ function handlePowerAction({ action }) {
     };
 
     const info = texts[action] || texts.logout;
+    if (typeof SystemInteractionAudio !== 'undefined') {
+        SystemInteractionAudio.playPower(action);
+    }
     if (!overlay || !titleEl || !textEl) return;
     titleEl.textContent = info.title;
     textEl.textContent = info.status;
@@ -861,7 +871,9 @@ function getLoginScreenCard() {
     return loginScreen ? loginScreen.querySelector('.login-card') : null;
 }
 
-function resetLockDesktopTransitionState() {
+let activeLockDesktopTransition = null;
+
+function clearLockDesktopTransitionVisualState() {
     const lockScreen = document.getElementById('lock-screen');
     const desktopScreen = document.getElementById('desktop-screen');
 
@@ -870,8 +882,10 @@ function resetLockDesktopTransitionState() {
         'desktop-blur-in',
         'desktop-unblur',
         'desktop-to-lock-blur',
+        'lock-to-desktop-blur',
         'lock-blur-in',
-        'lock-unblur'
+        'lock-unblur',
+        'lock-desktop-depth-transition'
     );
 
     if (lockScreen) {
@@ -883,6 +897,16 @@ function resetLockDesktopTransitionState() {
         desktopScreen.style.transition = '';
         desktopScreen.style.opacity = '';
     }
+}
+
+function resetLockDesktopTransitionState() {
+    if (activeLockDesktopTransition) {
+        activeLockDesktopTransition.timers.forEach(timer => clearTimeout(timer));
+        const resolve = activeLockDesktopTransition.resolve;
+        activeLockDesktopTransition = null;
+        resolve(false);
+    }
+    clearLockDesktopTransitionVisualState();
 }
 
 /**
@@ -970,54 +994,120 @@ window.handleLoginToLock = function() {
 };
 
 /**
- * 登录 → 桌面动画（加深模糊、淡化切换、变清晰同步进行）
+ * 桌面与锁屏之间可逆的非线性景深转场；标准锁屏与小组件编辑共用。
  */
-function handleDesktopToLock() {
+function runDesktopLockDepthTransition(direction = 'lock') {
+    const towardLock = direction !== 'desktop';
     const lockScreen = document.getElementById('lock-screen');
     const desktopScreen = document.getElementById('desktop-screen');
 
+    const interrupted = !!activeLockDesktopTransition;
+    const readOpacity = (element, fallback) => {
+        if (!element) return fallback;
+        const computed = typeof getComputedStyle === 'function' ? getComputedStyle(element).opacity : '';
+        const value = Number.parseFloat(computed || element.style.opacity);
+        return Number.isFinite(value) ? value : fallback;
+    };
+    const interruptedOpacity = interrupted ? {
+        lock: readOpacity(lockScreen, towardLock ? 0 : 1),
+        desktop: readOpacity(desktopScreen, towardLock ? 1 : 0)
+    } : null;
+
     resetLockDesktopTransitionState();
-    LockScreen.show();
+    if (towardLock) LockScreen.show();
+    else Desktop.show();
 
     if (!lockScreen || !desktopScreen) {
-        hideAllViews();
-        LockScreen.show();
-        return;
+        if (towardLock) {
+            Desktop.hide();
+            LockScreen.show();
+        } else {
+            LockScreen.hide();
+            Desktop.show();
+        }
+        return Promise.resolve(false);
     }
 
-    lockScreen.style.transition = 'none';
-    lockScreen.style.opacity = '0';
-    desktopScreen.style.transition = '';
-    desktopScreen.style.opacity = '1';
+    const sourceScreen = towardLock ? desktopScreen : lockScreen;
+    const targetScreen = towardLock ? lockScreen : desktopScreen;
+    const sourceDepthClass = towardLock ? 'desktop-to-lock-blur' : 'lock-to-desktop-blur';
+    const targetBlurClass = towardLock ? 'lock-blur-in' : 'desktop-blur-in';
+    const targetClearClass = towardLock ? 'lock-unblur' : 'desktop-unblur';
+    const animationsEnabled = document.body.classList.contains('animations-enabled')
+        && State.settings?.enableAnimation !== false;
 
-    document.body.classList.add('desktop-to-lock-blur', 'lock-blur-in');
+    if (!animationsEnabled) {
+        sourceScreen.style.opacity = '';
+        targetScreen.style.opacity = '';
+        if (towardLock) Desktop.hide();
+        else LockScreen.hide();
+        clearLockDesktopTransitionVisualState();
+        return Promise.resolve(true);
+    }
 
-    void lockScreen.offsetHeight;
+    const sourceStartOpacity = interrupted
+        ? (towardLock ? interruptedOpacity.desktop : interruptedOpacity.lock)
+        : 1;
+    const targetStartOpacity = interrupted
+        ? (towardLock ? interruptedOpacity.lock : interruptedOpacity.desktop)
+        : 0;
 
-    setTimeout(() => {
-        lockScreen.style.transition = 'opacity 400ms ease-in';
-        lockScreen.style.opacity = '1';
-        desktopScreen.style.transition = 'opacity 400ms ease-out';
-        desktopScreen.style.opacity = '0';
-    }, 100);
+    sourceScreen.style.transition = 'none';
+    sourceScreen.style.opacity = String(sourceStartOpacity);
+    targetScreen.style.transition = 'none';
+    targetScreen.style.opacity = String(targetStartOpacity);
 
-    setTimeout(() => {
-        document.body.classList.remove('lock-blur-in');
-        document.body.classList.add('lock-unblur');
-    }, 200);
+    document.body.classList.add('lock-desktop-depth-transition', sourceDepthClass, targetBlurClass);
 
-    setTimeout(() => {
-        Desktop.hide();
-        desktopScreen.style.transition = '';
-        desktopScreen.style.opacity = '';
-    }, 500);
+    void targetScreen.offsetHeight;
 
-    setTimeout(() => {
-        document.body.classList.remove('desktop-to-lock-blur', 'lock-unblur');
-        lockScreen.style.transition = '';
-        lockScreen.style.opacity = '';
-    }, 800);
+    return new Promise(resolve => {
+        const transition = { resolve, timers: [] };
+        activeLockDesktopTransition = transition;
+        const queue = (callback, delay) => {
+            const timer = setTimeout(() => {
+                if (activeLockDesktopTransition !== transition) return;
+                callback();
+            }, delay);
+            transition.timers.push(timer);
+        };
+
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            if (activeLockDesktopTransition !== transition) return;
+            const easing = 'cubic-bezier(0.16, 1, 0.3, 1)';
+            const remainingDistance = Math.max(sourceStartOpacity, 1 - targetStartOpacity);
+            const fadeDuration = Math.max(180, Math.round(560 * remainingDistance));
+            const clearDelay = Math.min(110, Math.max(40, Math.round(fadeDuration * 0.2)));
+            const finishDelay = Math.max(fadeDuration + 40, clearDelay + 700);
+
+            sourceScreen.style.transition = `opacity ${fadeDuration}ms ${easing}`;
+            targetScreen.style.transition = `opacity ${fadeDuration}ms ${easing}`;
+            sourceScreen.style.opacity = '0';
+            targetScreen.style.opacity = '1';
+
+            queue(() => {
+                document.body.classList.remove(targetBlurClass);
+                document.body.classList.add(targetClearClass);
+            }, clearDelay);
+
+            queue(() => {
+                if (towardLock) Desktop.hide();
+                else LockScreen.hide();
+                clearLockDesktopTransitionVisualState();
+                if (activeLockDesktopTransition === transition) {
+                    activeLockDesktopTransition = null;
+                    resolve(true);
+                }
+            }, finishDelay);
+        }));
+    });
 }
+
+function handleDesktopToLock() {
+    void runDesktopLockDepthTransition('lock');
+}
+
+window.runDesktopLockDepthTransition = runDesktopLockDepthTransition;
 
 function handleLoginToDesktop() {
     const loginCard = getLoginScreenCard();
@@ -1166,6 +1256,25 @@ document.addEventListener('cut', (e) => {
 /**
  * 阻止默认的拖拽行为
  */
+let nativeImageDragGuardInitialized = false;
+
+function initNativeImageDragGuard() {
+    if (nativeImageDragGuardInitialized) return;
+    nativeImageDragGuardInitialized = true;
+
+    document.addEventListener('dragstart', (e) => {
+        const target = e.target instanceof Element ? e.target : null;
+        if (!target || target.tagName !== 'IMG') return;
+
+        // Desktop and Files own the drag on their explicit item container and
+        // attach application/fluent-file. Every other image is presentation
+        // artwork and must not become a browser-native file drag.
+        const internalItem = target.closest('.desktop-icon[draggable="true"], .file-item[draggable="true"]');
+        if (internalItem) return;
+        e.preventDefault();
+    }, true);
+}
+
 document.addEventListener('dragover', (e) => {
     // Always prevent browser's default "open file" behavior on dragover
     // (drop handling is routed to specific surfaces like Files app / Desktop).
@@ -1188,6 +1297,9 @@ document.addEventListener('drop', (e) => {
     const inTaskbar = !!targetEl?.closest('.taskbar');
     const inStartMenu = !!targetEl?.closest('.start-menu');
     const targetDesktopIcon = targetEl?.closest('.desktop-icon');
+    const typeList = Array.from((e.dataTransfer && e.dataTransfer.types) || [])
+        .map((value) => String(value || '').toLowerCase());
+    const isInternalFluentDrag = typeList.includes('application/fluent-file');
 
     const getExternalFiles = (dataTransfer) => {
         const files = dataTransfer && dataTransfer.files;
@@ -1206,7 +1318,7 @@ document.addEventListener('drop', (e) => {
         return null;
     };
 
-    if (externalEnabled && isDesktopView && !inWindow && !inTaskbar && !inStartMenu) {
+    if (externalEnabled && !isInternalFluentDrag && isDesktopView && !inWindow && !inTaskbar && !inStartMenu) {
         const externalFiles = getExternalFiles(e.dataTransfer);
         if (externalFiles && externalFiles.length > 0) {
             e.preventDefault();
@@ -1511,7 +1623,7 @@ const ResourceMonitor = {
 };
 
 window.FluentOS = {
-    version: globalThis.FluentOSResourceManifest?.systemVersion || '2.3.260721D',
+    version: globalThis.FluentOSResourceManifest?.systemVersion || '2.4.260722',
     State,
     Storage,
     notify,
