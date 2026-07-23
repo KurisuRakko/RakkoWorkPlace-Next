@@ -12,7 +12,6 @@
     const nowIso = () => new Date().toISOString();
     const rand = () => Math.random().toString(36).slice(2, 10);
 
-    const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20MB soft limit to avoid blowing up localStorage
     const ALLOWED_IMPORT_EXTENSIONS = new Set(['jpg', 'png', 'webp', 'mp3', 'txt', 'md', 'fap']);
     const ALLOWED_IMPORT_ACCEPT = '.jpg,.png,.webp,.mp3,.txt,.md,.fap';
 
@@ -335,6 +334,14 @@
 
                 let importedCount = 0;
                 let hasError = false;
+                let importedBytesAtStart = 0;
+                let reservedImportedBytes = 0;
+                let capacityWarningShown = false;
+                try {
+                    if (globalThis.FluentOSStorage?.getImportedFilesBytes) {
+                        importedBytesAtStart = await FluentOSStorage.getImportedFilesBytes();
+                    }
+                } catch (_) {}
 
                 for (const task of this.tasks) {
                     if (task.status !== 'queued') continue;
@@ -355,11 +362,22 @@
                         continue;
                     }
 
-                    // Safety: size limit
-                    if (Number(task.file.size || 0) > MAX_FILE_BYTES) {
+                    // Product storage ceiling: capacity grows from 1 GB to
+                    // 5 GB and then 10 GB, but imports may never exceed 10 GB.
+                    const fileBytes = Math.max(0, Number(task.file.size || 0));
+                    const maxImportBytes = Number(globalThis.FluentOSStorage?.MAX_IMPORT_BYTES)
+                        || (10 * 1024 * 1024 * 1024);
+                    if (importedBytesAtStart + reservedImportedBytes + fileBytes > maxImportBytes) {
                         this._setTaskStatus(task, 'skipped');
                         task.progressEl.setValue(0);
-                        FluentUI.Toast?.({ title: t('files.title'), message: t('files.import-too-large', { name: task.file.name }), type: 'warning' });
+                        if (!capacityWarningShown) {
+                            capacityWarningShown = true;
+                            FluentUI.Toast?.({
+                                title: t('files.title'),
+                                message: t('files.import-capacity-warning'),
+                                type: 'warning'
+                            });
+                        }
                         this._refreshOverall();
                         continue;
                     }
@@ -405,6 +423,7 @@
                                 mime: task.file.type || imageMimeForFile(task.file),
                                 name: task.file.name,
                                 size: task.file.size,
+                                ownerAppId: 'files',
                                 lastModified: task.file.lastModified
                             });
                             const thumb = typeof PhotosDataStore.cachedThumbForId === 'function'
@@ -425,7 +444,10 @@
                                         file: task.file,
                                         name: task.file.name,
                                         mimeType: task.file.type || 'audio/mpeg',
-                                        lastModified: task.file.lastModified || Date.now()
+                                        lastModified: task.file.lastModified || Date.now(),
+                                        size: Number(task.file.size || 0),
+                                        sourceNodeId: importNodeId,
+                                        ownerAppId: 'files'
                                     });
                                 });
                                 cachedAudio = { nodeId: importNodeId, mediaRecordId };
@@ -494,7 +516,8 @@
                             size: Number(task.file.size || 0),
                             mime: String(isPackageImportFile(task.file) ? 'application/vnd.fluent.app-package' : (task.file.type || (cachedImage ? imageMimeForFile(task.file) : (cachedAudio ? 'audio/mpeg' : (isText ? 'text/plain' : 'application/octet-stream'))))),
                             encoding: cachedImage ? 'photos-local-cache' : (cachedAudio ? 'media-local-cache' : (cachedPackage ? 'fap-package-cache' : (isText ? 'text' : 'dataurl'))),
-                            source: (cachedImage || cachedAudio || isPackageImportFile(task.file)) ? 'external-import' : undefined,
+                            source: 'files-import',
+                            imported: true,
                             created: nowIso(),
                             modified: nowIso()
                         };
@@ -503,6 +526,7 @@
                         State.updateFS(State.fs);
 
                         importedCount++;
+                        reservedImportedBytes += fileBytes;
                         task.bytesLoaded = task.bytesTotal;
                         task.progressEl.setValue(100);
                         this._setTaskStatus(task, 'done');

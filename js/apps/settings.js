@@ -11,8 +11,11 @@ const SettingsApp = {
     _developerModeVisible: false,
     // 与当前仓库 git log 同步；同一天的提交共同组成一个日期版本。
     aboutChangelog: [
-        { date: '2026-07-22', version: '2.4.260722', commits: [
-            { hash: 'local', title: '完成了FluentOS青山湖阶段性重要功能更新，优化了系统响应速度和稳定性。修复照片、天气 App 的细节问题。调整了 Fluent App 安装器以及开发者中心安装包导入、源码查看和解包权限与逻辑。文件上传功能移至隐私设置并默认开启；大幅度整改实验室选项，移除弹窗与通知 Demo，新增跨 App 拖放和智能多开 App 窗口；特别注意“灵翼交互”即将下线，若有需要，请及时下载当前源码。新增系统交互音效，完善开机、关机、重启、通知与弹窗音效。优化小组件抽屉中锁屏与桌面之间可连续打断的非线性景深动画，并修复图标、文件拖动误触发上传的问题。统一控制中心滑块和悬停高光，修复通知中心布局、滚动、居中显示及单条通知模糊淡出、平滑补位。优化了 Fingo 对话卡片的进退场动画，同时保证背景模糊同步。改进了云母效果，现在云母效果可以正常显示。调整了个性化高级页面设置的实时预览窗，视觉更加协调，同时支持背景滚动以查看效果。修复开机加载圈动画卡顿的问题。' }
+        { date: '2026-07-23', version: '2.4.260723B', commits: [
+            { hash: 'local', title: '修复照片 App 设置锁屏壁纸不能立即生效。修复开启自动识别壁纸主题色后，更换壁纸不会立即重新识别并应用主题色的BUG。优化锁屏密码进入桌面的动画。App Shop 搜索页图标和文字跟随系统主题色。完善第三方 PWA 存储统计和卸载。存储未知的应用排在列表底部，并显示“未知”。设置 App 每次打开时只刷新一次存储数据。完善系统存储统计分类。引入动态导入容量：默认显示 1GB。导入文件超过 1GB 后扩展至 5GB。超过 5GB 后扩展至最高 10GB。新导入会导致总量超过 10GB 时阻止导入并提醒清理。文件 App 新增“音乐”文件夹：多媒体 App 导入的音乐自动出现在其中。修复了开始菜单文件名过长的显示异常问题。修复移动文件的时候会同时触发文件导入的BUG。修复了文件App内文件名过长的显示BUG。' }
+        ] },
+        { date: '2026-07-22', version: '2.4.260722A', commits: [
+            { hash: '2198bd8', title: '完成了FluentOS青山湖阶段性重要功能更新，优化了系统响应速度和稳定性。修复照片、天气 App 的细节问题。调整了 Fluent App 安装器以及开发者中心安装包导入、源码查看和解包权限与逻辑。文件上传功能移至隐私设置并默认开启；大幅度整改实验室选项，移除弹窗与通知 Demo，新增跨 App 拖放和智能多开 App 窗口；特别注意“灵翼交互”即将下线，若有需要，请及时下载当前源码。新增系统交互音效，完善开机、关机、重启、通知与弹窗音效。优化小组件抽屉中锁屏与桌面之间可连续打断的非线性景深动画，并修复图标、文件拖动误触发上传的问题。统一控制中心滑块和悬停高光，修复通知中心布局、滚动、居中显示及单条通知模糊淡出、平滑补位。优化了 Fingo 对话卡片的进退场动画，同时保证背景模糊同步。改进了云母效果，现在云母效果可以正常显示。调整了个性化高级页面设置的实时预览窗，视觉更加协调，同时支持背景滚动以查看效果。修复开机加载圈动画卡顿的问题。' }
         ] },
         { date: '2026-07-21', version: '2.3.260721D', commits: [
             { hash: '258254b', title: '进一步清理了老旧无用代码，修复了部分已知BUG，提升了系统稳定性。' }
@@ -159,12 +162,39 @@ const SettingsApp = {
     _avatarThumbStorageKey: 'fluentos.avatarThumbs.v1',
     _avatarPlaceholderSrc: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==',
     _stateUnsubscribers: [],
+    _lastStorageSnapshot: null,
+    _storageSnapshotPromise: null,
+    _storageSnapshotToken: 0,
     
     // 获取应用包大小（字节）。静态文件数据由构建期清单提供。
     getAppSize(appId, isPWA = false) {
         const app = typeof Desktop !== 'undefined' ? Desktop.apps.find(item => item.id === appId) : null;
         if (!app || !globalThis.FluentOSStorage) return 0;
         return FluentOSStorage.getAppSize({ ...app, isPWA: isPWA === true || app.isPWA === true });
+    },
+
+    prepareStorageSnapshot() {
+        const token = ++this._storageSnapshotToken;
+        this._lastStorageSnapshot = null;
+        if (!globalThis.FluentOSStorage) {
+            this._storageSnapshotPromise = Promise.resolve(null);
+            return;
+        }
+        const apps = this.getStorageApps();
+        this._storageSnapshotPromise = FluentOSStorage.analyze(apps, { force: true })
+            .then((snapshot) => {
+                if (token === this._storageSnapshotToken) this._lastStorageSnapshot = snapshot;
+                return token === this._storageSnapshotToken ? snapshot : null;
+            })
+            .catch((error) => {
+                if (token === this._storageSnapshotToken) console.error('[SettingsApp] Storage analysis failed', error);
+                return null;
+            });
+    },
+
+    getPreparedStorageSnapshot() {
+        if (this._lastStorageSnapshot) return Promise.resolve(this._lastStorageSnapshot);
+        return this._storageSnapshotPromise || Promise.resolve(null);
     },
 
     init(windowId, initialData = null) {
@@ -194,6 +224,7 @@ const SettingsApp = {
                 initialDataHandled = true;
             }
         }
+        this.prepareStorageSnapshot();
         this.render();
         
         this._stateUnsubscribers.splice(0).forEach((unsubscribe) => unsubscribe());
@@ -308,6 +339,9 @@ const SettingsApp = {
     },
 
     beforeClose() {
+        this._storageSnapshotToken += 1;
+        this._storageSnapshotPromise = null;
+        this._lastStorageSnapshot = null;
         this._stateUnsubscribers.splice(0).forEach((unsubscribe) => unsubscribe());
         if (this._storageChangeHandler) {
             window.removeEventListener('fluentos-storage-change', this._storageChangeHandler);
@@ -4596,20 +4630,24 @@ const SettingsApp = {
         const appsList = document.createElement('div');
         appsList.className = 'apps-list';
         appsList.id = 'apps-list-container';
-        this.renderAppsListContent(appsList, apps, null);
+        const preparedSnapshot = this._lastStorageSnapshot;
+        this.renderAppsListContent(appsList, apps, preparedSnapshot);
         section.appendChild(appsList);
         
         container.appendChild(section);
 
-        if (globalThis.FluentOSStorage) {
-            FluentOSStorage.analyze(apps).then((snapshot) => {
+        if (preparedSnapshot) {
+            this.renderStorageOverview(storageCard, preparedSnapshot);
+        } else if (globalThis.FluentOSStorage) {
+            this.getPreparedStorageSnapshot().then((snapshot) => {
                 if (!storageCard.isConnected || this.currentPage !== 'applications') return;
+                if (!snapshot) {
+                    const usage = storageCard.querySelector('.storage-usage');
+                    if (usage) usage.textContent = t('settings.storage-unavailable');
+                    return;
+                }
                 this.renderStorageOverview(storageCard, snapshot);
                 this.renderAppsListContent(appsList, apps, snapshot);
-            }).catch((error) => {
-                console.error('[SettingsApp] Storage analysis failed', error);
-                const usage = storageCard.querySelector('.storage-usage');
-                if (usage) usage.textContent = t('settings.storage-unavailable');
             });
         }
         
@@ -4624,7 +4662,7 @@ const SettingsApp = {
     getStorageApps() {
         const installed = new Set(State.settings.installedApps || []);
         const desktopApps = typeof Desktop !== 'undefined' ? Desktop.apps : [];
-        return desktopApps.filter((app) => app.isPWA !== true || installed.has(app.id)).map((app) => {
+        return desktopApps.filter((app) => app.isPWA !== true || app.developerCreated === true || installed.has(app.id)).map((app) => {
             const shopApp = typeof AppShop !== 'undefined' ? AppShop.apps.find(item => item.id === app.id) : null;
             const pwaConfig = typeof PWALoader !== 'undefined' ? PWALoader.apps?.[app.id] : null;
             const isPWA = app.isPWA === true;
@@ -4642,7 +4680,8 @@ const SettingsApp = {
     renderStorageOverview(card, snapshot) {
         this._lastStorageSnapshot = snapshot;
         const categories = snapshot.categories;
-        const displayQuota = 1024 * 1024 * 1024;
+        const displayQuota = Number(snapshot.displayCapacityBytes)
+            || FluentOSStorage.getDisplayCapacity(snapshot.importedFilesBytes || 0);
         const denominator = displayQuota;
         const segments = [
             ['core', t('settings.storage-core'), categories.systemCoreBytes],
@@ -4675,14 +4714,18 @@ const SettingsApp = {
                 ...app,
                 sizeBytes,
                 dataSizeBytes,
+                dataAvailable: snapshot?.apps?.[app.id]?.dataAvailable !== false,
                 totalSizeBytes: sizeBytes + dataSizeBytes
             };
         });
         
         // 排序
-        allApps.sort((a, b) => this.appSortOrder === 'desc'
-            ? b.totalSizeBytes - a.totalSizeBytes
-            : a.totalSizeBytes - b.totalSizeBytes);
+        allApps.sort((a, b) => {
+            if (a.dataAvailable !== b.dataAvailable) return a.dataAvailable ? -1 : 1;
+            return this.appSortOrder === 'desc'
+                ? b.totalSizeBytes - a.totalSizeBytes
+                : a.totalSizeBytes - b.totalSizeBytes;
+        });
         
         container.innerHTML = allApps.map(app => `
             <div class="app-list-item" data-app-id="${app.id}" data-is-pwa="${app.isPWA}">
@@ -4693,7 +4736,7 @@ const SettingsApp = {
                     <div class="app-name">${app.name}</div>
                     <div class="app-meta">${t('settings.last-used', { time: this.formatAppLastUsed(app.id) })}</div>
                 </div>
-                <div class="app-size">${globalThis.FluentOSStorage ? FluentOSStorage.formatBytes(app.totalSizeBytes) : '0 B'}</div>
+                <div class="app-size">${app.dataAvailable ? (globalThis.FluentOSStorage ? FluentOSStorage.formatBytes(app.totalSizeBytes) : '0 B') : t('settings.storage-unknown')}</div>
                 <div class="app-arrow">
                     <img src="Theme/Icon/Symbol_icon/stroke/Chevron Right.svg" alt="">
                 </div>
@@ -4808,7 +4851,7 @@ const SettingsApp = {
                 </div>
                 <div class="app-storage-divider"></div>
                 <div class="app-storage-row">
-                    <span>${t('settings.app-data')}</span>
+                    <span>${t(app.id === 'files' ? 'settings.documents-data' : 'settings.app-data')}</span>
                     <span data-storage-value="data">${FluentOSStorage.formatBytes(initialDataSize)}</span>
                 </div>
                 <div class="app-storage-divider"></div>
@@ -4898,16 +4941,22 @@ const SettingsApp = {
         container.appendChild(section);
 
         if (globalThis.FluentOSStorage) {
-            const apps = this.getStorageApps();
-            FluentOSStorage.analyze(apps).then((snapshot) => {
+            const applySnapshot = (snapshot) => {
                 if (!storageCard.isConnected || this.currentPage !== 'app-detail' || this.currentAppDetail?.id !== app.id) return;
+                if (!snapshot) return;
                 const values = snapshot.apps[app.id] || { appSizeBytes: initialSize, dataSizeBytes: 0 };
                 app.sizeBytes = values.appSizeBytes;
                 app.dataSizeBytes = values.dataSizeBytes;
                 storageCard.querySelector('[data-storage-value="app"]').textContent = FluentOSStorage.formatBytes(values.appSizeBytes);
-                storageCard.querySelector('[data-storage-value="data"]').textContent = FluentOSStorage.formatBytes(values.dataSizeBytes);
-                storageCard.querySelector('[data-storage-value="total"]').textContent = FluentOSStorage.formatBytes(values.appSizeBytes + values.dataSizeBytes);
-            }).catch(error => console.error('[SettingsApp] App storage analysis failed', error));
+                storageCard.querySelector('[data-storage-value="data"]').textContent = values.dataAvailable === false
+                    ? t('settings.storage-unknown')
+                    : FluentOSStorage.formatBytes(values.dataSizeBytes);
+                storageCard.querySelector('[data-storage-value="total"]').textContent = values.dataAvailable === false
+                    ? t('settings.storage-unknown')
+                    : FluentOSStorage.formatBytes(values.appSizeBytes + values.dataSizeBytes);
+            };
+            if (this._lastStorageSnapshot) applySnapshot(this._lastStorageSnapshot);
+            else this.getPreparedStorageSnapshot().then(applySnapshot);
         }
     },
     

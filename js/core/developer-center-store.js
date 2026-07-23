@@ -145,6 +145,7 @@ const DeveloperCenterStore = {
         if (!store) throw new Error('IndexedDB is unavailable');
         await this._request(store.put(value));
         window.dispatchEvent(new CustomEvent('developer-center-data-change', { detail: { storeName } }));
+        globalThis.FluentOSStorage?.invalidate?.();
         return value;
     },
 
@@ -153,6 +154,7 @@ const DeveloperCenterStore = {
         if (!store) return false;
         await this._request(store.delete(id));
         window.dispatchEvent(new CustomEvent('developer-center-data-change', { detail: { storeName } }));
+        globalThis.FluentOSStorage?.invalidate?.();
         return true;
     },
 
@@ -161,6 +163,7 @@ const DeveloperCenterStore = {
         if (!store) return false;
         await this._request(store.clear());
         window.dispatchEvent(new CustomEvent('developer-center-data-change', { detail: { storeName } }));
+        globalThis.FluentOSStorage?.invalidate?.();
         return true;
     },
 

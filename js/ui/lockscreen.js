@@ -78,7 +78,13 @@ const LockScreen = {
             && typeof BootScreen.getPreparedLockWallpaper === 'function'
             ? BootScreen.getPreparedLockWallpaper(wallpaperSetting)
             : '';
-        if (preparedWallpaper) {
+        const currentWallpaper = typeof State.getResolvedWallpaper === 'function'
+            ? State.getResolvedWallpaper('lock')
+            : wallpaperSetting;
+        // Custom wallpapers keep the stable `wallpaper-cache:lock` setting even
+        // when their bytes (and object URL) change. Only reuse the boot-time
+        // decoded image while it still matches the currently resolved image.
+        if (preparedWallpaper && preparedWallpaper === currentWallpaper) {
             this.wallpaperElement.style.backgroundImage = `url('${preparedWallpaper}')`;
             return;
         }

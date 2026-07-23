@@ -28,6 +28,10 @@ const MediaApp = {
     _optionsClickAwayHandler: null,
     _langHandler: null,
     _unsubscribeLanguage: null,
+    _unsubscribeFs: null,
+    _fsSyncPromise: null,
+    _fsSyncQueued: false,
+    _coverUrlsByRecordId: new Map(),
     mediaStorageKey: 'fluentos.media.library.v1',
     playbackStorageKey: 'fluentos.media.playback.v1',
     mediaDbName: 'FluentOSMediaLibrary',
@@ -69,7 +73,7 @@ const MediaApp = {
         this.isRestoring = !this.library.length && this.getLibraryManifest().length > 0;
         this.render();
         this.startProgressLoop();
-        void this.restoreLibraryFromStorage();
+        void this.restoreLibraryFromStorage().then(() => this.scheduleFileSystemSync());
 
         if (!this._unsubscribeLanguage && typeof State !== 'undefined' && typeof State.on === 'function') {
             this._langHandler = () => {
@@ -80,6 +84,7 @@ const MediaApp = {
             };
             this._unsubscribeLanguage = State.on('languageChange', this._langHandler);
         }
+        this.ensureFileSystemSubscription();
     },
 
     destroy() {
@@ -215,6 +220,7 @@ const MediaApp = {
         const item = await this.createMediaItem(file);
         item.id = stableId;
         item.sourceNodeId = node.id;
+        item.ownerAppId = node.source === 'media-local' ? 'media' : 'files';
         this.library.push(item);
         this.currentIndex = this.library.length - 1;
         this.activeView = 'now';
@@ -253,6 +259,111 @@ const MediaApp = {
         this.currentIndex = this.library.length ? Math.min(this.currentIndex, this.library.length - 1) : -1;
         this.saveLibraryManifest();
         this.savePlaybackSnapshot(true);
+    },
+
+    collectActiveMediaNodes() {
+        const nodes = new Map();
+        const visit = (node, inRecycle = false) => {
+            if (!node || typeof node !== 'object') return;
+            const recycled = inRecycle || node.id === 'recycle';
+            if (!recycled && node.type === 'file') {
+                const ext = this.getExt(node.name);
+                const isAudio = String(node.mime || '').toLowerCase().startsWith('audio/')
+                    || this.audioTypes.has(ext);
+                if (isAudio && node.encoding === 'media-local-cache') nodes.set(String(node.id), node);
+            }
+            (node.children || []).forEach((child) => visit(child, recycled));
+        };
+        visit(typeof State !== 'undefined' ? State.fs?.root : null);
+        return nodes;
+    },
+
+    scheduleFileSystemSync() {
+        if (this._fsSyncPromise) {
+            this._fsSyncQueued = true;
+            return this._fsSyncPromise;
+        }
+        this._fsSyncPromise = Promise.resolve()
+            .then(() => this.syncWithFileSystem())
+            .catch((error) => console.warn('[MediaApp] Failed to synchronize Files music', error))
+            .finally(() => {
+                this._fsSyncPromise = null;
+                if (this._fsSyncQueued) {
+                    this._fsSyncQueued = false;
+                    this.scheduleFileSystemSync();
+                }
+            });
+        return this._fsSyncPromise;
+    },
+
+    ensureFileSystemSubscription() {
+        if (this._unsubscribeFs || typeof State === 'undefined' || typeof State.on !== 'function') return;
+        this._unsubscribeFs = State.on('fsChange', () => this.scheduleFileSystemSync(), {
+            key: 'media-files-sync'
+        });
+    },
+
+    async syncWithFileSystem() {
+        if (this.restorePromise) await this.restorePromise;
+        const activeNodes = this.collectActiveMediaNodes();
+        const removedIds = this.library
+            .filter((item) => item?.sourceNodeId && !activeNodes.has(String(item.sourceNodeId)))
+            .map((item) => String(item.sourceNodeId));
+        if (removedIds.length) this.releaseFiles(removedIds);
+
+        let changed = removedIds.length > 0;
+        for (const node of activeNodes.values()) {
+            const recordId = String(node.mediaRecordId || `fs-${node.id}`);
+            const existing = this.library.find((item) =>
+                item?.sourceNodeId === node.id || item?.id === recordId
+            );
+            if (existing) {
+                const ownerAppId = node.source === 'media-local' ? 'media' : 'files';
+                if (existing.sourceNodeId !== node.id || existing.name !== node.name || existing.ownerAppId !== ownerAppId) {
+                    existing.sourceNodeId = node.id;
+                    existing.name = node.name;
+                    existing.ownerAppId = ownerAppId;
+                    this.persistMediaItem(existing);
+                    changed = true;
+                }
+                continue;
+            }
+
+            let item = null;
+            try {
+                const record = await this.readStoredMedia(recordId);
+                if (record?.file) {
+                    item = this.createMediaItemFromStoredFast({
+                        ...record,
+                        id: recordId,
+                        sourceNodeId: node.id,
+                        name: node.name || record.name
+                    });
+                } else {
+                    const file = await this.fileFromFsNode(node);
+                    if (file) {
+                        item = await this.createMediaItem(file);
+                        item.id = recordId;
+                        item.sourceNodeId = node.id;
+                        item.ownerAppId = node.source === 'media-local' ? 'media' : 'files';
+                        await this.persistMediaItem(item);
+                    }
+                }
+            } catch (_) {}
+            if (!item) continue;
+            item.id = recordId;
+            item.sourceNodeId = node.id;
+            item.ownerAppId = node.source === 'media-local' ? 'media' : 'files';
+            item.name = node.name || item.name;
+            this.library.push(item);
+            changed = true;
+        }
+
+        if (!changed) return false;
+        if (this.currentIndex < 0 && this.library.length) this.currentIndex = 0;
+        this.saveLibraryManifest();
+        if (this.container?.isConnected) this.render();
+        return true;
     },
 
     getLanguage() {
@@ -301,7 +412,7 @@ const MediaApp = {
                 importSong: '导入新的歌曲',
                 importFolder: '导入新的文件夹',
                 clearLibrary: '清空已导入的歌曲',
-                clearLibraryDesc: '移除当前媒体库里保存的所有本地歌曲和视频记录。',
+                clearLibraryDesc: '永久删除由多媒体导入的歌曲、视频及音乐文件夹中的对应文件。',
                 recommended: '推荐播放',
                 recentEmptyTitle: '暂无播放记录',
                 recentEmptyDesc: '播放过的音乐和视频会出现在这里。',
@@ -344,7 +455,7 @@ const MediaApp = {
                 importSong: 'Import new songs',
                 importFolder: 'Import new folder',
                 clearLibrary: 'Clear imported songs',
-                clearLibraryDesc: 'Remove all imported local songs and videos from the media library.',
+                clearLibraryDesc: 'Permanently delete Media imports and their matching files from the Music folder.',
                 recommended: 'Recommended',
                 recentEmptyTitle: 'No playback history yet',
                 recentEmptyDesc: 'Music and videos you play will appear here.',
@@ -1095,6 +1206,8 @@ const MediaApp = {
         try {
             const manifest = this.library.map((item) => ({
                 id: item.id,
+                sourceNodeId: item.sourceNodeId || '',
+                ownerAppId: item.ownerAppId || (item.sourceNodeId ? 'files' : 'media'),
                 name: item.name,
                 type: item.type,
                 title: item.title,
@@ -1158,18 +1271,31 @@ const MediaApp = {
     },
 
     persistMediaItem(item) {
-        if (!item?.file) return;
-        this.withMediaStore('readwrite', (store) => {
+        if (!item?.file) return Promise.resolve(false);
+        return this.withMediaStore('readwrite', (store) => {
             store.put({
                 id: item.id,
                 file: item.file,
                 name: item.name,
                 mimeType: item.mimeType || item.file.type || '',
-                lastModified: item.lastModified || item.file.lastModified || Date.now()
+                lastModified: item.lastModified || item.file.lastModified || Date.now(),
+                size: Number(item.size || item.file.size || 0),
+                sourceNodeId: item.sourceNodeId || '',
+                ownerAppId: item.ownerAppId || (item.sourceNodeId ? 'files' : 'media'),
+                title: item.title || '',
+                artist: item.artist || '',
+                album: item.album || '',
+                coverBlob: item.coverBlob instanceof Blob ? item.coverBlob : null,
+                themeColors: Array.isArray(item.themeColors) ? item.themeColors : null,
+                gradientIndex: Number.isInteger(item.gradientIndex) ? item.gradientIndex : 0,
+                duration: Number(item.duration || 0),
+                lastPlayed: Number(item.lastPlayed || 0),
+                playCount: Number(item.playCount || 0)
             });
         }).then(() => {
             if (globalThis.FluentOSStorage) FluentOSStorage.invalidate();
-        }).catch(() => {});
+            return true;
+        }).catch(() => false);
     },
 
     async readStoredMedia(id) {
@@ -1178,6 +1304,60 @@ const MediaApp = {
             request.onsuccess = () => resolve(request.result || null);
             request.onerror = () => reject(request.error);
         }));
+    },
+
+    recordIdForNode(node) {
+        if (!node) return '';
+        return String(node.mediaRecordId || (node.encoding === 'media-local-cache' ? `fs-${node.id}` : ''));
+    },
+
+    peekCoverForNode(node) {
+        const recordId = this.recordIdForNode(node);
+        if (!recordId) return '';
+        const live = this.library.find((item) =>
+            item?.id === recordId || item?.sourceNodeId === node.id
+        );
+        return live?.coverUrl || this._coverUrlsByRecordId.get(recordId) || '';
+    },
+
+    async loadCoverForNode(node) {
+        const recordId = this.recordIdForNode(node);
+        if (!recordId) return '';
+        const cached = this.peekCoverForNode(node);
+        if (cached) return cached;
+        const record = await this.readStoredMedia(recordId).catch(() => null);
+        if (!record?.file) return '';
+
+        let coverBlob = record.coverBlob instanceof Blob ? record.coverBlob : null;
+        let coverUrl = '';
+        let metadata = null;
+        if (coverBlob) {
+            coverUrl = URL.createObjectURL(coverBlob);
+            this.objectUrls.add(coverUrl);
+        } else if (this.getExt(record.name || node.name) === 'mp3') {
+            metadata = await this.readMp3Metadata(record.file).catch(() => null);
+            coverBlob = metadata?.coverBlob instanceof Blob ? metadata.coverBlob : null;
+            coverUrl = metadata?.coverUrl || '';
+            if (coverBlob) {
+                await this.withMediaStore('readwrite', (store) => {
+                    store.put({
+                        ...record,
+                        coverBlob,
+                        title: record.title || metadata.title || '',
+                        artist: record.artist || metadata.artist || '',
+                        album: record.album || metadata.album || ''
+                    });
+                }).catch(() => {});
+            }
+        }
+        if (!coverUrl) return '';
+        this._coverUrlsByRecordId.set(recordId, coverUrl);
+        try {
+            window.dispatchEvent(new CustomEvent('media-cover-ready', {
+                detail: { nodeId: node.id, recordId, url: coverUrl }
+            }));
+        } catch (_) {}
+        return coverUrl;
     },
 
     async deleteStoredMedia(id) {
@@ -1765,26 +1945,67 @@ const MediaApp = {
             media.removeAttribute('src');
             media.load();
         }
-        let ownedRecordIds = [];
+
+        // Media imports are real Files nodes. Clearing Media data is the one
+        // explicit destructive action that removes both those nodes and their
+        // IndexedDB payloads immediately (without sending them to Recycle).
+        const ownedNodeRefs = [];
+        const visit = (node, parent = null) => {
+            if (!node || typeof node !== 'object') return;
+            if (node.type === 'file' && node.encoding === 'media-local-cache' && node.source === 'media-local') {
+                ownedNodeRefs.push({
+                    node,
+                    parent,
+                    recordId: String(node.mediaRecordId || `fs-${node.id}`)
+                });
+            }
+            (node.children || []).forEach((child) => visit(child, node));
+        };
+        visit(typeof State !== 'undefined' ? State.fs?.root : null);
+
+        let ownedRecordIds = new Set(ownedNodeRefs.map((entry) => entry.recordId));
         try {
             const records = await this.readAllStoredMedia();
-            ownedRecordIds = records
-                .map(record => String(record?.id || ''))
-                .filter(id => id && !id.startsWith('fs-'));
-            const deleted = await Promise.all(ownedRecordIds.map(id => this.deleteStoredMedia(id)));
+            records.forEach((record) => {
+                const id = String(record?.id || '');
+                if (!id) return;
+                const declaredOwner = String(record?.ownerAppId || '');
+                const legacyMediaRecord = !declaredOwner
+                    && (!id.startsWith('fs-') || id.startsWith('fs-media-file-'));
+                if (declaredOwner === 'media' || legacyMediaRecord) ownedRecordIds.add(id);
+            });
+            const deleted = await Promise.all([...ownedRecordIds].map((id) => this.deleteStoredMedia(id)));
             if (deleted.some(result => result === false)) throw new Error('media_payload_delete_failed');
         } catch (error) {
             console.error('[MediaApp] Failed to clear media library payloads', error);
             return false;
         }
-        this.revokeObjectUrls();
-        this.library = [];
-        this.currentIndex = -1;
+
+        const ownedNodeIds = new Set(ownedNodeRefs.map((entry) => String(entry.node.id)));
+        ownedNodeRefs.forEach(({ node, parent }) => {
+            if (!parent?.children) return;
+            parent.children = parent.children.filter((child) => child !== node && child?.id !== node.id);
+        });
+        const removedItems = this.library.filter((item) =>
+            ownedRecordIds.has(String(item?.id || ''))
+            || ownedNodeIds.has(String(item?.sourceNodeId || ''))
+            || item?.ownerAppId === 'media'
+        );
+        removedItems.forEach((item) => {
+            [item?.url, item?.coverUrl].filter(Boolean).forEach((url) => {
+                try { URL.revokeObjectURL(url); } catch (_) {}
+                this.objectUrls.delete(url);
+            });
+            this._coverUrlsByRecordId.delete(String(item?.id || ''));
+        });
+        this.library = this.library.filter((item) => !removedItems.includes(item));
+        this.currentIndex = this.library.length ? 0 : -1;
         this.playerExpanded = false;
-        try { localStorage.removeItem(this.mediaStorageKey); } catch (_) {}
+        if (ownedNodeRefs.length && typeof State !== 'undefined') State.updateFS(State.fs);
+        this.saveLibraryManifest();
         try { localStorage.removeItem(this.playbackStorageKey); } catch (_) {}
         if (globalThis.FluentOSStorage) FluentOSStorage.invalidate();
-        this.render();
+        if (this.container?.isConnected) this.render();
         return true;
     },
 
@@ -1804,25 +2025,104 @@ const MediaApp = {
         return files;
     },
 
+    uniqueNameInFolder(folder, desiredName) {
+        const raw = String(desiredName || this.localText('unknownTitle'));
+        const dot = raw.lastIndexOf('.');
+        const base = dot > 0 ? raw.slice(0, dot) : raw;
+        const ext = dot > 0 ? raw.slice(dot) : '';
+        const exists = (name) => (folder.children || []).some((node) =>
+            String(node?.name || '').toLowerCase() === String(name).toLowerCase()
+        );
+        if (!exists(raw)) return raw;
+        let index = 1;
+        while (exists(`${base}（${index}）${ext}`)) index += 1;
+        return `${base}（${index}）${ext}`;
+    },
+
+    attachAudioItemToMusicFolder(item) {
+        if (!item || item.type !== 'audio' || typeof State === 'undefined') return null;
+        let music = State.findNode?.('music');
+        if (!music && State.fs?.root) {
+            music = { id: 'music', name: '音乐', type: 'folder', children: [] };
+            State.fs.root.children = State.fs.root.children || [];
+            State.fs.root.children.push(music);
+        }
+        if (!music || music.type !== 'folder') return null;
+        music.children = music.children || [];
+        const nodeId = `media-file-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        const recordId = `fs-${nodeId}`;
+        const now = new Date().toISOString();
+        const node = {
+            id: nodeId,
+            name: this.uniqueNameInFolder(music, item.name),
+            type: 'file',
+            content: recordId,
+            mediaRecordId: recordId,
+            size: Number(item.size || item.file?.size || 0),
+            mime: item.mimeType || item.file?.type || 'audio/mpeg',
+            encoding: 'media-local-cache',
+            source: 'media-local',
+            imported: true,
+            created: now,
+            modified: now
+        };
+        item.id = recordId;
+        item.sourceNodeId = nodeId;
+        item.ownerAppId = 'media';
+        item.name = node.name;
+        music.children.push(node);
+        return node;
+    },
+
     async importFiles(files) {
         const mediaFiles = files.filter((file) => this.isAudioFile(file) || this.isVideoFile(file));
         if (!mediaFiles.length) return;
 
         const startEmpty = this.library.length === 0;
         const imported = [];
+        let importedBytesAtStart = 0;
+        let reservedImportedBytes = 0;
+        let capacityExceeded = false;
+        let fileSystemChanged = false;
+        try {
+            if (globalThis.FluentOSStorage?.getImportedFilesBytes) {
+                importedBytesAtStart = await FluentOSStorage.getImportedFilesBytes();
+            }
+        } catch (_) {}
+        const maxImportBytes = Number(globalThis.FluentOSStorage?.MAX_IMPORT_BYTES)
+            || (10 * 1024 * 1024 * 1024);
         for (const file of mediaFiles) {
+            const fileBytes = Math.max(0, Number(file.size || 0));
+            if (importedBytesAtStart + reservedImportedBytes + fileBytes > maxImportBytes) {
+                capacityExceeded = true;
+                continue;
+            }
             const item = await this.createMediaItem(file);
+            if (item.type === 'audio' && this.attachAudioItemToMusicFolder(item)) {
+                fileSystemChanged = true;
+            }
             this.library.push(item);
             imported.push(item);
+            reservedImportedBytes += fileBytes;
             this.loadDuration(item);
-            this.persistMediaItem(item);
+            await this.persistMediaItem(item);
         }
 
+        if (fileSystemChanged) State.updateFS(State.fs);
         if (startEmpty && imported.length) {
             this.currentIndex = this.library.indexOf(imported[0]);
         }
         this.saveLibraryManifest();
         this.render();
+        if (capacityExceeded && globalThis.FluentUI?.Toast) {
+            FluentUI.Toast({
+                title: typeof t === 'function' ? t('media.title') : this.localText('app'),
+                message: typeof t === 'function'
+                    ? t('files.import-capacity-warning')
+                    : '导入文件过多，会占用大量本地存储。请清理导入文件后再试（最多 10 GB）。',
+                type: 'warning'
+            });
+        }
     },
 
     async createMediaItem(file) {
@@ -1847,6 +2147,8 @@ const MediaApp = {
             artist: metadata.artist || '',
             album: metadata.album || '',
             coverUrl: metadata.coverUrl || '',
+            coverBlob: metadata.coverBlob || null,
+            ownerAppId: 'media',
             gradientIndex: Math.floor(Math.random() * this.gradients.length),
             recommendRank: Math.random(),
             size: file.size || 0,
@@ -1872,9 +2174,12 @@ const MediaApp = {
         return {
             ...item,
             id: record.id || item.id,
+            sourceNodeId: record.sourceNodeId || item.sourceNodeId || '',
+            ownerAppId: record.ownerAppId || item.ownerAppId || (record.sourceNodeId ? 'files' : 'media'),
             title: record.title || item.title,
             artist: record.artist || item.artist,
             album: record.album || item.album,
+            coverBlob: record.coverBlob instanceof Blob ? record.coverBlob : item.coverBlob,
             themeColors: Array.isArray(record.themeColors) ? record.themeColors : item.themeColors,
             typeLabel: this.getTypeLabel(item),
             gradientIndex: Number.isInteger(record.gradientIndex) ? record.gradientIndex : item.gradientIndex,
@@ -1895,8 +2200,16 @@ const MediaApp = {
         const type = this.isVideoFile(file) ? 'video' : 'audio';
         const url = URL.createObjectURL(file);
         this.objectUrls.add(url);
+        let coverUrl = '';
+        if (record.coverBlob instanceof Blob) {
+            coverUrl = URL.createObjectURL(record.coverBlob);
+            this.objectUrls.add(coverUrl);
+            this._coverUrlsByRecordId.set(String(record.id || ''), coverUrl);
+        }
         return {
             id: record.id,
+            sourceNodeId: record.sourceNodeId || '',
+            ownerAppId: record.ownerAppId || (record.sourceNodeId ? 'files' : 'media'),
             file,
             url,
             type,
@@ -1905,7 +2218,8 @@ const MediaApp = {
             title: record.title || this.stripExt(file.name) || this.localText('unknownTitle'),
             artist: record.artist || '',
             album: record.album || '',
-            coverUrl: '',
+            coverUrl,
+            coverBlob: record.coverBlob instanceof Blob ? record.coverBlob : null,
             themeColors: Array.isArray(record.themeColors) ? record.themeColors : null,
             gradientIndex: Number.isInteger(record.gradientIndex) ? record.gradientIndex : 0,
             recommendRank: Math.random(),
@@ -1928,10 +2242,16 @@ const MediaApp = {
             for (const item of queue) {
                 try {
                     const metadata = await this.readMp3Metadata(item.file);
-                    if (metadata.coverUrl) item.coverUrl = metadata.coverUrl;
+                    if (metadata.coverUrl) {
+                        item.coverUrl = metadata.coverUrl;
+                        item.coverBlob = metadata.coverBlob || null;
+                    }
                     if (!item.artist && metadata.artist) item.artist = metadata.artist;
                     if (!item.album && metadata.album) item.album = metadata.album;
-                    if (metadata.coverUrl) await this.applyThemeColors(item);
+                    if (metadata.coverUrl) {
+                        await this.applyThemeColors(item);
+                        this.persistMediaItem(item);
+                    }
                 } catch (_) {}
             }
             this.saveLibraryManifest();
@@ -1976,6 +2296,7 @@ const MediaApp = {
             } else if (frameId === 'APIC') {
                 const cover = this.decodeApic(payload);
                 if (cover) {
+                    result.coverBlob = cover;
                     result.coverUrl = URL.createObjectURL(cover);
                     this.objectUrls.add(result.coverUrl);
                 }
@@ -2362,6 +2683,7 @@ const MediaApp = {
     revokeObjectUrls() {
         this.objectUrls.forEach((url) => URL.revokeObjectURL(url));
         this.objectUrls.clear();
+        this._coverUrlsByRecordId.clear();
     },
 
     formatTime(value) {
@@ -3165,5 +3487,8 @@ if (typeof window !== 'undefined') {
     window.MediaApp = MediaApp;
     // Warm the persisted queue independently of the window. Reopening Media is
     // then immediate, and the desktop widget can play without launching it.
-    setTimeout(() => { void MediaApp.ensureLibraryReady(); }, 0);
+    setTimeout(() => {
+        MediaApp.ensureFileSystemSubscription();
+        void MediaApp.ensureLibraryReady().then(() => MediaApp.scheduleFileSystemSync());
+    }, 0);
 }

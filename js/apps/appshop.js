@@ -20,6 +20,7 @@ const AppShop = {
     _searchComposing: false,
     _iconColorCache: new Map(),
     _iconColorPending: new Map(),
+    _accentSvgSourceCache: new Map(),
     _stateUnsubscribers: [],
     _storyKeydownHandler: null,
     
@@ -679,7 +680,7 @@ const AppShop = {
                 display: flex;
                 align-items: center;
                 gap: 12px;
-                color: #2da8ff;
+                color: var(--accent);
                 background: transparent;
                 cursor: pointer;
                 font-size: 16px;
@@ -690,11 +691,23 @@ const AppShop = {
                 border: 1px solid rgba(255,255,255,0.1);
                 border-radius: 12px;
                 padding: 0 16px;
-                color: #fff;
+                color: var(--accent);
                 background: rgba(255,255,255,0.05);
             }
-            .appshop-category-card img,
-            .appshop-discover-chip img { width: 20px; height: 20px; filter: invert(58%) sepia(73%) saturate(2812%) hue-rotate(181deg) brightness(103%) contrast(101%); }
+            .appshop-search-browse .appshop-discover-chip,
+            .appshop-search-browse .appshop-category-card,
+            .appshop-search-browse .appshop-discover-chip span,
+            .appshop-search-browse .appshop-category-card span {
+                color: var(--accent) !important;
+            }
+            .appshop-accent-icon {
+                display: block;
+                width: 20px;
+                height: 20px;
+                flex: 0 0 20px;
+                color: var(--accent) !important;
+                object-fit: contain;
+            }
             .appshop-search-panel {
                 position: sticky;
                 top: -24px;
@@ -710,7 +723,7 @@ const AppShop = {
                 border-radius: 14px;
                 padding: 0 16px;
                 display: grid;
-                grid-template-columns: 22px minmax(0, 1fr) 22px;
+                grid-template-columns: 22px minmax(0, 1fr);
                 align-items: center;
                 gap: 12px;
                 background: rgba(255,255,255,0.74);
@@ -718,7 +731,12 @@ const AppShop = {
                 backdrop-filter: blur(22px) saturate(1.25);
                 box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             }
-            .appshop-search-large img { width: 22px; height: 22px; opacity: 0.7; }
+            .appshop-search-large .appshop-search-icon {
+                width: 22px;
+                height: 22px;
+                flex-basis: 22px;
+                opacity: 0.86;
+            }
             .appshop-search-large input {
                 border: 0;
                 outline: 0;
@@ -735,9 +753,6 @@ const AppShop = {
             }
             body.dark-mode .appshop-search-large input::placeholder {
                 color: rgba(255,255,255,0.55);
-            }
-            body.dark-mode .appshop-search-large img {
-                filter: brightness(0) invert(1);
             }
             .appshop-apps-grid.clean {
                 display: grid;
@@ -1803,9 +1818,8 @@ const AppShop = {
             <div class="appshop-search-page">
                 <div class="appshop-search-panel">
                     <div class="appshop-search-large">
-                        <img src="Theme/Icon/Symbol_icon/stroke/Search.svg" alt="">
+                        <img class="appshop-accent-icon appshop-search-icon" src="Theme/Icon/Symbol_icon/stroke/Search.svg" data-icon-src="Theme/Icon/Symbol_icon/stroke/Search.svg" alt="">
                         <input class="appshop-search-input" type="text" placeholder="${t('appshop.search')}" value="${this.searchQuery}">
-                        <img src="Theme/Icon/Symbol_icon/stroke/Microphone.svg" alt="">
                     </div>
                 </div>
                 ${shouldShowResults ? `
@@ -1822,7 +1836,7 @@ const AppShop = {
                     <div class="appshop-discover-grid">
                         ${discover.map(item => `
                             <button class="appshop-discover-chip" type="button" data-search-term="${item.query}">
-                                <img src="Theme/Icon/Symbol_icon/stroke/Search.svg" alt="">
+                                <img class="appshop-accent-icon" src="Theme/Icon/Symbol_icon/stroke/Search.svg" data-icon-src="Theme/Icon/Symbol_icon/stroke/Search.svg" alt="">
                                 <span>${item.label}</span>
                             </button>
                         `).join('')}
@@ -1831,7 +1845,7 @@ const AppShop = {
                     <div class="appshop-category-strip">
                         ${categories.map(cat => `
                             <button class="appshop-category-card" type="button" data-category="${cat.id}">
-                                <img src="Theme/Icon/Symbol_icon/stroke/${cat.icon}.svg" alt="">
+                                <img class="appshop-accent-icon" src="Theme/Icon/Symbol_icon/stroke/${cat.icon}.svg" data-icon-src="Theme/Icon/Symbol_icon/stroke/${cat.icon}.svg" alt="">
                                 <span>${cat.name}</span>
                             </button>
                         `).join('')}
@@ -1839,6 +1853,56 @@ const AppShop = {
                 </div>
             </div>
         `;
+    },
+
+    getAccentSvgSource(source) {
+        if (!source) return Promise.reject(new Error('Missing icon source'));
+        if (this._accentSvgSourceCache.has(source)) {
+            return this._accentSvgSourceCache.get(source);
+        }
+
+        const request = fetch(source)
+            .then((response) => {
+                if (!response.ok) throw new Error(`Unable to load icon: ${source}`);
+                return response.text();
+            })
+            .catch((error) => {
+                this._accentSvgSourceCache.delete(source);
+                throw error;
+            });
+        this._accentSvgSourceCache.set(source, request);
+        return request;
+    },
+
+    hydrateAccentIcons() {
+        if (!this.container?.isConnected || typeof DOMParser === 'undefined') return;
+
+        this.container.querySelectorAll('img.appshop-accent-icon[data-icon-src]').forEach((icon) => {
+            const source = icon.dataset.iconSrc;
+            this.getAccentSvgSource(source)
+                .then((markup) => {
+                    if (!icon.isConnected) return;
+                    const documentNode = new DOMParser().parseFromString(markup, 'image/svg+xml');
+                    const svg = documentNode.documentElement;
+                    if (!svg || svg.nodeName.toLowerCase() !== 'svg' || documentNode.querySelector('parsererror')) return;
+
+                    svg.querySelectorAll('script, foreignObject').forEach((node) => node.remove());
+                    svg.querySelectorAll('[stroke]').forEach((node) => {
+                        if (node.getAttribute('stroke') !== 'none') node.setAttribute('stroke', 'currentColor');
+                    });
+                    svg.querySelectorAll('[fill]').forEach((node) => {
+                        if (node.getAttribute('fill') !== 'none') node.setAttribute('fill', 'currentColor');
+                    });
+                    svg.setAttribute('class', icon.getAttribute('class') || 'appshop-accent-icon');
+                    svg.setAttribute('aria-hidden', 'true');
+                    svg.removeAttribute('width');
+                    svg.removeAttribute('height');
+                    icon.replaceWith(svg);
+                })
+                .catch(() => {
+                    // Keep the original image visible if an icon cannot be inlined.
+                });
+        });
     },
 
     renderAllAppsPage() {
@@ -2027,6 +2091,7 @@ const AppShop = {
     },
 
     bindEvents() {
+        this.hydrateAccentIcons();
         const searchInput = this.container.querySelector('.appshop-search-input');
         if (searchInput) {
             const scheduleSearchRender = (delay = 280) => {

@@ -367,6 +367,7 @@
                 mime: meta.mime || blob.type || 'image/jpeg',
                 name: meta.name || id,
                 size: Number(meta.size || blob.size || 0),
+                ownerAppId: meta.ownerAppId === 'files' ? 'files' : 'photos',
                 lastModified: Number(meta.lastModified || Date.now()),
                 updated: Date.now()
             };
@@ -915,8 +916,23 @@
             const folders = this.ensureLibraryFolders();
             if (!folders.local) return [];
             const imported = [];
+            let importedBytesAtStart = 0;
+            let reservedImportedBytes = 0;
+            let capacityExceeded = false;
+            try {
+                if (globalThis.FluentOSStorage?.getImportedFilesBytes) {
+                    importedBytesAtStart = await FluentOSStorage.getImportedFilesBytes();
+                }
+            } catch (_) {}
+            const maxImportBytes = Number(globalThis.FluentOSStorage?.MAX_IMPORT_BYTES)
+                || (10 * 1024 * 1024 * 1024);
             try {
                 for (const file of input) {
+                    const fileBytes = Math.max(0, Number(file.size || 0));
+                    if (importedBytesAtStart + reservedImportedBytes + fileBytes > maxImportBytes) {
+                        capacityExceeded = true;
+                        continue;
+                    }
                     const nodeId = `photo-local-${Date.now()}-${rand()}`;
                     const cacheKey = await this.storeLocalImage(nodeId, file, {
                         mime: file.type,
@@ -936,6 +952,7 @@
                         mime: String(file.type || 'image/jpeg'),
                         encoding: 'photos-local-cache',
                         source: 'photos-local',
+                        imported: true,
                         thumb,
                         lastModified: Number(file.lastModified || Date.now()),
                         created: nowIso(),
@@ -943,6 +960,7 @@
                     };
                     folders.local.children.push(node);
                     imported.push(node);
+                    reservedImportedBytes += fileBytes;
                 }
             } catch (err) {
                 imported.forEach(node => {
@@ -959,6 +977,15 @@
                 });
                 this.persistFS();
                 throw new Error('photos_fs_persist_failed');
+            }
+            if (capacityExceeded && globalThis.FluentUI?.Toast) {
+                FluentUI.Toast({
+                    title: typeof t === 'function' ? t('photos.title') : '照片',
+                    message: typeof t === 'function'
+                        ? t('files.import-capacity-warning')
+                        : '导入文件过多，会占用大量本地存储。请清理导入文件后再试（最多 10 GB）。',
+                    type: 'warning'
+                });
             }
             this.renderWidgets();
             return imported;
@@ -1786,8 +1813,8 @@
             }
             try {
                 const imported = await PhotosDataStore.importFiles(images);
-                this.toast(this.tr('imported', { count: imported.length }), 'success');
-                if (this.frame) {
+                if (imported.length) this.toast(this.tr('imported', { count: imported.length }), 'success');
+                if (imported.length && this.frame) {
                     this.activeView = 'local';
                     this.frame.navigate('local', { preserveScroll: false });
                 }

@@ -6,6 +6,10 @@
 const PWALoader = {
     // 存储所有已注册的 PWA 应用配置
     apps: {},
+    storageBridgeSupport: new Map(),
+    storageRequestTimeout: 1800,
+    storageClearTimeout: 15000,
+    storageLoadTimeout: 5000,
 
     normalizeIcon(icon) {
         if (!icon) return 'Theme/Icon/App_icon/app_gallery.png';
@@ -16,6 +20,149 @@ const PWALoader = {
         const catalog = window.FluentPWACatalog;
         if (!Array.isArray(catalog)) return null;
         return catalog.find(app => app.id === id) || null;
+    },
+
+    _storageOrigin(config) {
+        try { return new URL(config?.url || '', location.href).origin; }
+        catch (_) { return null; }
+    },
+
+    _openStorageFrame(id) {
+        const component = window[`PWA_${String(id || '').replace(/-/g, '_')}`];
+        const frame = component?.getFrame?.();
+        return frame?.isConnected ? frame : null;
+    },
+
+    _requestFrameStorage(frame, config, action) {
+        return new Promise((resolve, reject) => {
+            const target = frame?.contentWindow;
+            const targetOrigin = this._storageOrigin(config);
+            if (!target || !targetOrigin) {
+                reject(new Error('pwa_storage_frame_unavailable'));
+                return;
+            }
+
+            const requestId = globalThis.crypto?.randomUUID?.()
+                || `pwa-storage-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            let settled = false;
+            const finish = (callback, value) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                window.removeEventListener('message', onMessage);
+                callback(value);
+            };
+            const onMessage = (event) => {
+                if (event.source !== target || event.origin !== targetOrigin) return;
+                const message = event.data || {};
+                if (message.type !== 'fluentos:storage-response' || message.version !== 2 || message.requestId !== requestId || message.appId !== config.id) return;
+                if (message.ok !== true) {
+                    finish(reject, new Error(String(message.error || 'pwa_storage_operation_failed')));
+                    return;
+                }
+                this.storageBridgeSupport.set(config.id, true);
+                const reportedBytes = Number(message.bytes);
+                if (action === 'measure' && (!Number.isFinite(reportedBytes) || reportedBytes < 0)) {
+                    finish(reject, new Error('pwa_storage_measurement_invalid'));
+                    return;
+                }
+                const value = action === 'measure' ? Math.min(reportedBytes, 1024 * 1024 * 1024) : true;
+                finish(resolve, value);
+            };
+            const timeout = action === 'clear' ? this.storageClearTimeout : this.storageRequestTimeout;
+            const timer = setTimeout(() => {
+                if (action === 'probe') this.storageBridgeSupport.set(config.id, false);
+                finish(reject, new Error(action === 'clear' ? 'pwa_storage_clear_timeout' : 'pwa_storage_bridge_unavailable'));
+            }, timeout);
+            window.addEventListener('message', onMessage);
+            try {
+                target.postMessage({
+                    source: 'FluentOS',
+                    type: 'fluentos:storage-request',
+                    version: 2,
+                    requestId,
+                    appId: config.id,
+                    action
+                }, targetOrigin);
+            } catch (error) {
+                finish(reject, error);
+            }
+        });
+    },
+
+    _withStorageFrame(id, action) {
+        const config = this.apps[id];
+        if (!config?.allowLocalStorage) return Promise.resolve(action === 'measure' ? 0 : true);
+
+        const runOperation = (frame) => {
+            if (action !== 'clear') return this._requestFrameStorage(frame, config, action);
+            const support = this.storageBridgeSupport.get(id);
+            if (support === false) return Promise.resolve(true);
+            if (support === true) return this._requestFrameStorage(frame, config, 'clear');
+            return this._requestFrameStorage(frame, config, 'probe')
+                .then(() => this._requestFrameStorage(frame, config, 'clear'))
+                .catch((error) => {
+                    if (this.storageBridgeSupport.get(id) === false) return true;
+                    throw error;
+                });
+        };
+
+        const openFrame = this._openStorageFrame(id);
+        if (openFrame) return runOperation(openFrame);
+
+        return new Promise((resolve, reject) => {
+            if (!document.body) {
+                reject(new Error('pwa_storage_probe_unavailable'));
+                return;
+            }
+            const frame = document.createElement('iframe');
+            frame.hidden = true;
+            frame.setAttribute('aria-hidden', 'true');
+            frame.setAttribute('sandbox', 'allow-same-origin allow-scripts');
+            frame.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;border:0;';
+            let settled = false;
+            const cleanup = () => {
+                clearTimeout(loadTimer);
+                frame.onload = null;
+                frame.onerror = null;
+                try { frame.remove(); } catch (_) {}
+            };
+            const finish = (callback, value) => {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                callback(value);
+            };
+            const loadTimer = setTimeout(() => finish(reject, new Error('pwa_storage_probe_timeout')), this.storageLoadTimeout);
+            frame.onload = () => {
+                runOperation(frame)
+                    .then((value) => finish(resolve, value))
+                    .catch((error) => finish(reject, error));
+            };
+            frame.onerror = () => finish(reject, new Error('pwa_storage_probe_failed'));
+            frame.src = config.url;
+            document.body.appendChild(frame);
+        });
+    },
+
+    measureAppStorage(id) {
+        return this._withStorageFrame(id, 'measure');
+    },
+
+    clearAppStorage(id) {
+        return this._withStorageFrame(id, 'clear');
+    },
+
+    _syncStorageProvider(id, config) {
+        if (!globalThis.FluentOSStorage) return;
+        this.storageBridgeSupport.delete(id);
+        FluentOSStorage.unregisterProvider?.(id);
+        if (!config?.allowLocalStorage) return;
+        FluentOSStorage.registerProvider(id, {
+            external: true,
+            measure: () => this.measureAppStorage(id),
+            clear: () => this.clearAppStorage(id)
+        });
     },
 
     registerFromCatalog(appOrId) {
@@ -68,6 +215,7 @@ const PWALoader = {
         };
         
         this.apps[id] = normalizedConfig;
+        this._syncStorageProvider(id, normalizedConfig);
         
         // 创建应用对象
         window[`PWA_${id.replace(/-/g, '_')}`] = {
@@ -257,6 +405,8 @@ const PWALoader = {
      * 注销 PWA 应用
      */
     unregister(id) {
+        this.storageBridgeSupport.delete(id);
+        globalThis.FluentOSStorage?.unregisterProvider?.(id);
         if (this.apps[id]) {
             delete this.apps[id];
             delete window[`PWA_${id.replace(/-/g, '_')}`];

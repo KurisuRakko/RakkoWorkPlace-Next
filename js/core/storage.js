@@ -271,7 +271,7 @@ const Storage = {
                 externalFileImportDefaultVersion: 1,
                 enableSystemInteractionAudio: false,
                 enableCrossAppDragDrop: false,
-                enableAppMultiWindow: false,
+                enableAppMultiWindow: true,
                 enableWindowBlur: false,
                 enableFluentV2: true,
                 enableButtonGlowEffect: true,
@@ -343,6 +343,12 @@ const Storage = {
                         {
                             id: 'pictures',
                             name: '图片',
+                            type: 'folder',
+                            children: []
+                        },
+                        {
+                            id: 'music',
+                            name: '音乐',
                             type: 'folder',
                             children: []
                         },

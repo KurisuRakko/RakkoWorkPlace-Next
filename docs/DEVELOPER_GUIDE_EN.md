@@ -266,6 +266,60 @@ Catalog entries are stored in `js/third_parts_apps/pwa-catalog.js`. Cross-origin
 
 Only entries whose ID and URL exactly match the source-controlled catalog, and Developer Center PWAs with a declared and approved `storage.local` permission, receive `allow-same-origin` in the iframe sandbox. This lets the PWA use `localStorage`, sign-in state, and other same-origin data belonging to its own site origin. Other PWAs remain on an opaque origin; direct calls to `PWALoader.register()` cannot expand that authority.
 
+Cross-origin PWAs distributed as packages and requesting `storage.local` must implement the Fluent OS storage handshake. It lets Settings report the site's real data usage and clear that origin's `localStorage` before uninstalling. `FLUENT_OS_ORIGIN` must be the exact trusted deployment origin; do not use `*`:
+
+```javascript
+const FLUENT_OS_ORIGIN = 'https://your-fluent-os.example';
+const measureBrowserStorage = async () => {
+    let localStorageBytes = 0;
+    for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index) || '';
+        localStorageBytes += new TextEncoder().encode(key + (localStorage.getItem(key) || '')).byteLength;
+    }
+    const estimate = await navigator.storage?.estimate?.();
+    const originUsage = Number.isFinite(estimate?.usage) ? Number(estimate.usage) : 0;
+    return Math.max(localStorageBytes, originUsage);
+};
+const deleteDatabase = (name) => new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(name);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error || new Error(`Could not delete IndexedDB: ${name}`));
+    request.onblocked = () => reject(new Error(`IndexedDB is still open: ${name}`));
+});
+const clearBrowserStorage = async () => {
+    window.dispatchEvent(new CustomEvent('fluentos:before-storage-clear'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    localStorage.clear();
+    sessionStorage.clear();
+    if (globalThis.caches) await Promise.all((await caches.keys()).map((name) => caches.delete(name)));
+    if (!indexedDB.databases) throw new Error('This browser cannot enumerate IndexedDB databases');
+    await Promise.all((await indexedDB.databases()).filter((item) => item.name).map((item) => deleteDatabase(item.name)));
+    if (navigator.storage?.getDirectory) {
+        const root = await navigator.storage.getDirectory();
+        for await (const [name] of root.entries()) await root.removeEntry(name, { recursive: true });
+    }
+    if (navigator.serviceWorker?.getRegistrations) {
+        await Promise.all((await navigator.serviceWorker.getRegistrations()).map((registration) => registration.unregister()));
+    }
+};
+window.addEventListener('message', async (event) => {
+    const request = event.data || {};
+    if (event.origin !== FLUENT_OS_ORIGIN || request.source !== 'FluentOS' || request.type !== 'fluentos:storage-request' || request.version !== 2) return;
+    try {
+        let bytes = 0;
+        if (request.action === 'probe') bytes = 0;
+        else if (request.action === 'measure') bytes = await measureBrowserStorage();
+        else if (request.action === 'clear') await clearBrowserStorage();
+        else return;
+        event.source.postMessage({ type: 'fluentos:storage-response', version: 2, requestId: request.requestId, appId: request.appId, ok: true, bytes }, event.origin);
+    } catch (error) {
+        event.source.postMessage({ type: 'fluentos:storage-response', version: 2, requestId: request.requestId, appId: request.appId, ok: false, error: String(error?.message || error) }, event.origin);
+    }
+});
+```
+
+The reported figure uses the origin's browser storage estimate, covering browser-managed data such as Local Storage, IndexedDB, Cache Storage, and OPFS, and Fluent OS counts it entirely as App data. Apps that keep IndexedDB connections open should listen for `fluentos:before-storage-clear` and close them first. PWAs without handshake support can still be uninstalled, but their site-origin data remains. After protocol support is confirmed, a cleanup timeout or failure cancels the uninstall.
+
 ## 10. Apps Created in Developer Center
 
 Apps packaged by Developer Center run in sandboxed iframes and can request host capabilities only through the injected asynchronous `FluentOS` bridge. They cannot directly access the host document or ordinary browser storage. A project must declare `storage.local` before using `FluentOS.storage`; clipboard access requires `clipboard.read`, `clipboard.write`, or both. Calls remain subject to the authorization snapshot and browser security policies.

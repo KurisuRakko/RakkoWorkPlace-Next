@@ -1181,17 +1181,17 @@ function handleLoginToDesktop() {
         if (loginScreen) loginScreen.style.transition = 'opacity 400ms ease-out';
         if (loginScreen) loginScreen.style.opacity = '0';
         
-        desktopScreen.style.transition = 'opacity 400ms ease-in';
+        desktopScreen.style.transition = 'opacity 560ms cubic-bezier(0.16, 1, 0.3, 1)';
         desktopScreen.style.opacity = '1';
     }, 100);
     
-    // 4. 200ms：桌面开始淡入，同时开始从模糊变清晰（不等待）
+    // 4. 桌面先以景深模糊状态显现，再在后半段非线性恢复清晰
     setTimeout(() => {
         document.body.classList.remove('desktop-blur-in');
         document.body.classList.add('desktop-unblur');
-    }, 200);
+    }, 360);
     
-    // 5. 500ms：清理锁屏和登录界面
+    // 5. 桌面淡入完成后再清理锁屏和登录界面
     setTimeout(() => {
         LockScreen.hide();
         LoginScreen.hide();
@@ -1208,12 +1208,12 @@ function handleLoginToDesktop() {
         }
         desktopScreen.style.transition = '';
         desktopScreen.style.opacity = '';
-    }, 500);
+    }, 680);
     
-    // 6. 800ms：清晰过渡完成，清理动画类
+    // 6. 景深恢复完成后清理动画类
     setTimeout(() => {
         document.body.classList.remove('desktop-unblur');
-    }, 800);
+    }, 1080);
 }
 
 /**
@@ -1667,7 +1667,7 @@ const ResourceMonitor = {
 };
 
 window.FluentOS = {
-    version: globalThis.FluentOSResourceManifest?.systemVersion || '2.4.260722',
+    version: globalThis.FluentOSResourceManifest?.systemVersion || '2.4.260723B',
     State,
     Storage,
     notify,

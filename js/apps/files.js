@@ -3,7 +3,7 @@
  */
 const FilesApp = {
     // 系统受保护的根级文件夹（不可删除/重命名）
-    SYSTEM_ROOT_FOLDERS: ['desktop', 'documents', 'pictures', 'downloads', 'recycle'],
+    SYSTEM_ROOT_FOLDERS: ['desktop', 'documents', 'pictures', 'music', 'downloads', 'recycle'],
     // 风险扩展名：禁止通过重命名修改为/修改掉这些扩展名
     EXECUTABLE_EXTENSIONS: [
         'js', 'mjs', 'cjs', 'jsx', 'ts', 'tsx',
@@ -42,6 +42,8 @@ const FilesApp = {
     _boundViewRoot: null,
     _isClosing: false,
     _renderGeneration: 0,
+    _mediaCoverCache: new Map(),
+    _mediaCoverLoads: new Set(),
     
     // 剪贴板相关
     clipboard: {
@@ -243,6 +245,7 @@ const FilesApp = {
             { id: 'desktop', label: t('files.desktop'), icon: 'Folder' },
             { id: 'documents', label: t('files.documents'), icon: 'File' },
             { id: 'pictures', label: t('files.pictures'), icon: 'Image' },
+            { id: 'music', label: t('files.music'), icon: 'Music' },
             { id: 'downloads', label: t('files.downloads'), icon: 'Download' },
             { id: 'recycle', label: t('files.recycle'), icon: 'Trash' }
         ];
@@ -426,14 +429,17 @@ const FilesApp = {
             .files-search:focus-within { box-shadow: 0 0 0 2px var(--accent); background: var(--bg-tertiary); }
             .files-main { flex: 1; display: flex; overflow: hidden; }
             .files-content { flex: 1; overflow-y: auto; padding: 16px; position: relative; }
-            .files-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 16px; }
-            .file-item { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 8px; border-radius: var(--radius-md); cursor: pointer; transition: background var(--transition-fast); }
+            .files-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 16px; align-items: stretch; }
+            .file-item { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; padding: 12px 8px; box-sizing: border-box; border-radius: var(--radius-md); cursor: pointer; transition: background var(--transition-fast); }
             .file-item:hover { background: rgba(0, 0, 0, 0.05); }
             .file-item.selected { background: var(--accent); color: white; }
             .file-item img { width: 48px; height: 48px; }
             .file-item-image-preview { width: 64px !important; height: 64px !important; border-radius: 12px; object-fit: cover; box-shadow: 0 8px 22px rgba(0,0,0,0.14); background: rgba(0,0,0,0.08); }
+            .file-item-music-preview { display: grid; place-items: center; overflow: hidden; background: linear-gradient(135deg, #5e5ce6 0%, #64d2ff 52%, #e0e7ff 100%); }
+            .file-item-music-preview img { width: 30px !important; height: 30px !important; filter: brightness(0) invert(1); opacity: .94; }
             .file-item.selected .file-item-image-preview { box-shadow: 0 8px 22px rgba(0,0,0,0.22); }
-            .file-item span { font-size: 13px; text-align: center; word-break: break-word; }
+            .file-item > .file-item-name { display: block; width: 100%; min-width: 0; height: 1.2em; max-height: 1.2em; overflow: hidden; color: inherit; font-size: 13px; line-height: 1.2; text-align: center; white-space: nowrap; text-overflow: ellipsis; }
+            .file-item.selected > .file-item-name { height: auto; max-height: none; overflow: visible; white-space: normal; overflow-wrap: anywhere; word-break: break-word; text-overflow: clip; }
             .files-statusbar { padding: 8px 16px; border-top: 1px solid var(--border-color); font-size: 12px; color: var(--text-secondary); background: var(--bg-tertiary); }
             .dark-mode .toolbar-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
             .dark-mode .breadcrumb-item:hover { background: rgba(255, 255, 255, 0.1); }
@@ -1430,12 +1436,50 @@ const FilesApp = {
         return '';
     },
 
+    isAudioNode(node) {
+        if (!node || node.type !== 'file') return false;
+        if (String(node.mime || '').toLowerCase().startsWith('audio/')) return true;
+        return /\.(?:mp3|m4a|aac|ogg|oga|wav|flac|opus|webm)$/i.test(String(node.name || ''));
+    },
+
+    mediaRecordIdForNode(node) {
+        if (!node) return '';
+        return String(node.mediaRecordId || (node.encoding === 'media-local-cache' ? `fs-${node.id}` : ''));
+    },
+
+    queueMediaCover(node) {
+        const recordId = this.mediaRecordIdForNode(node);
+        if (!recordId || this._mediaCoverCache.has(recordId) || this._mediaCoverLoads.has(recordId)) return;
+        if (!globalThis.MediaApp || typeof MediaApp.loadCoverForNode !== 'function') return;
+        this._mediaCoverLoads.add(recordId);
+        Promise.resolve(MediaApp.loadCoverForNode(node)).then((url) => {
+            this._mediaCoverCache.set(recordId, url || '');
+            if (url && this.container && !this.isSearching) this.renderFileList();
+        }).catch(() => {
+            this._mediaCoverCache.set(recordId, '');
+        }).finally(() => {
+            this._mediaCoverLoads.delete(recordId);
+        });
+    },
+
     renderFileIconHTML(node) {
         if (this.isImageNode(node)) {
             const preview = this.getImagePreviewSrc(node);
             if (preview) {
                 return `<img class="file-item-image-preview" src="${preview}" alt="${node.name}" draggable="false">`;
             }
+        }
+        if (this.isAudioNode(node)) {
+            const recordId = this.mediaRecordIdForNode(node);
+            const liveCover = globalThis.MediaApp && typeof MediaApp.peekCoverForNode === 'function'
+                ? MediaApp.peekCoverForNode(node)
+                : '';
+            const cover = liveCover || this._mediaCoverCache.get(recordId) || '';
+            if (!this._mediaCoverCache.has(recordId)) this.queueMediaCover(node);
+            if (cover) {
+                return `<img class="file-item-image-preview" src="${cover}" alt="${node.name}" draggable="false">`;
+            }
+            return `<span class="file-item-image-preview file-item-music-preview" role="img" aria-label="${node.name}"><img src="Theme/Icon/Symbol_icon/stroke/Music.svg" alt="" draggable="false"></span>`;
         }
         if (node.type === 'app') {
             const desktopIcon = typeof Desktop !== 'undefined' && typeof Desktop.getDesktopIcon === 'function'
@@ -1524,7 +1568,7 @@ const FilesApp = {
             
             item.innerHTML = `
                 ${this.renderFileIconHTML(node)}
-                <span>${node.name}</span>
+                <span class="file-item-name">${node.name}</span>
             `;
             
             // 拖拽事件
@@ -1736,7 +1780,7 @@ const FilesApp = {
     filterFiles(query) {
         const items = this.container.querySelectorAll('.file-item');
         items.forEach(item => {
-            const name = item.querySelector('span').textContent.toLowerCase();
+            const name = item.querySelector('.file-item-name')?.textContent.toLowerCase() || '';
             if (name.includes(query.toLowerCase())) {
                 item.style.display = 'flex';
             } else {
@@ -2222,7 +2266,7 @@ const FilesApp = {
 
             item.innerHTML = `
                 ${this.renderFileIconHTML(nameNode || { id: nodeId, name: displayName, type: nodeType })}
-                <span>${displayName}</span>
+                <span class="file-item-name">${displayName}</span>
                 <small style="opacity:.7; font-size:11px; margin-top:-4px;">${location}</small>
             `;
             filesList.appendChild(item);

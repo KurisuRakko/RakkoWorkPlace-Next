@@ -357,6 +357,60 @@ PWALoader.register({
 
 只有与源码目录中的 ID 和 URL 精确匹配的目录条目，以及在 Developer Center 中声明并获批 `storage.local` 权限的 PWA，才会在 iframe sandbox 中获得 `allow-same-origin`。这让 PWA 能使用其网站来源自己的 `localStorage`、登录态等同源数据。其他 PWA 使用不含 `allow-same-origin` 的不透明来源；直接调用 `PWALoader.register()` 不能扩大该权限。
 
+通过安装包分发、并申请 `storage.local` 的跨域 PWA，必须实现 Fluent OS 存储握手，以便“设置 > 应用程序”统计真实数据，并在卸载前清空该网站来源的 `localStorage`。务必将 `FLUENT_OS_ORIGIN` 固定为实际部署 Fluent OS 的可信来源，不能使用 `*`：
+
+```javascript
+const FLUENT_OS_ORIGIN = 'https://your-fluent-os.example';
+const measureBrowserStorage = async () => {
+    let localStorageBytes = 0;
+    for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index) || '';
+        localStorageBytes += new TextEncoder().encode(key + (localStorage.getItem(key) || '')).byteLength;
+    }
+    const estimate = await navigator.storage?.estimate?.();
+    const originUsage = Number.isFinite(estimate?.usage) ? Number(estimate.usage) : 0;
+    return Math.max(localStorageBytes, originUsage);
+};
+const deleteDatabase = (name) => new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(name);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error || new Error(`无法删除 IndexedDB：${name}`));
+    request.onblocked = () => reject(new Error(`IndexedDB 仍被占用：${name}`));
+});
+const clearBrowserStorage = async () => {
+    window.dispatchEvent(new CustomEvent('fluentos:before-storage-clear'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    localStorage.clear();
+    sessionStorage.clear();
+    if (globalThis.caches) await Promise.all((await caches.keys()).map((name) => caches.delete(name)));
+    if (!indexedDB.databases) throw new Error('当前浏览器无法枚举 IndexedDB');
+    await Promise.all((await indexedDB.databases()).filter((item) => item.name).map((item) => deleteDatabase(item.name)));
+    if (navigator.storage?.getDirectory) {
+        const root = await navigator.storage.getDirectory();
+        for await (const [name] of root.entries()) await root.removeEntry(name, { recursive: true });
+    }
+    if (navigator.serviceWorker?.getRegistrations) {
+        await Promise.all((await navigator.serviceWorker.getRegistrations()).map((registration) => registration.unregister()));
+    }
+};
+window.addEventListener('message', async (event) => {
+    const request = event.data || {};
+    if (event.origin !== FLUENT_OS_ORIGIN || request.source !== 'FluentOS' || request.type !== 'fluentos:storage-request' || request.version !== 2) return;
+    try {
+        let bytes = 0;
+        if (request.action === 'probe') bytes = 0;
+        else if (request.action === 'measure') bytes = await measureBrowserStorage();
+        else if (request.action === 'clear') await clearBrowserStorage();
+        else return;
+        event.source.postMessage({ type: 'fluentos:storage-response', version: 2, requestId: request.requestId, appId: request.appId, ok: true, bytes }, event.origin);
+    } catch (error) {
+        event.source.postMessage({ type: 'fluentos:storage-response', version: 2, requestId: request.requestId, appId: request.appId, ok: false, error: String(error?.message || error) }, event.origin);
+    }
+});
+```
+
+统计值使用该来源的浏览器存储估算，覆盖 Local Storage、IndexedDB、Cache Storage、OPFS 等浏览器管理的数据，并统一计入“应用数据”。App 如果长期持有 IndexedDB 连接，应监听 `fluentos:before-storage-clear` 并先关闭连接。不支持握手协议的 PWA 仍可正常卸载，但网站来源数据会保留；已确认支持协议后，若正式清理超时或失败，Fluent OS 会取消卸载。
+
 限制必须在产品设计中明确：跨域 iframe 的 DOM 不可读取；站点可能拒绝嵌入；登录 Cookie、弹窗、下载、媒体自动播放和权限均受浏览器策略控制。后台冻结会向 iframe 发送：
 
 ```javascript

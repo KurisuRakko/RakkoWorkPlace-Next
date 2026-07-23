@@ -8,6 +8,7 @@ const State = {
     // 设置
     settings: {},
     _resolvedWallpapers: { desktop: '', lock: '' },
+    _wallpaperAccentPromise: null,
     
     // 会话
     session: {},
@@ -119,18 +120,30 @@ const State = {
             const value = String(source || fallback);
             this._resolvedWallpapers[id] = value;
             if (typeof WallpaperStore !== 'undefined') await WallpaperStore.clearSlot(id);
-            this.updateSettings({ [key]: value });
+            const settingsChanged = this.updateSettings({ [key]: value });
             this.emit('wallpaperChange', { slot: id, key, reference: value, url: value });
+            if (id === 'desktop' && this.settings.accentColorAuto === true) {
+                const accentUpdate = settingsChanged
+                    ? this._wallpaperAccentPromise
+                    : this.updateAccentFromWallpaper(value);
+                if (accentUpdate) await accentUpdate;
+            }
             return value;
         }
         const reference = await WallpaperStore.saveForSlot(id, source, meta);
         const url = await WallpaperStore.resolveReference(reference);
         if (!url) throw new Error('wallpaper_cache_unavailable');
         this._resolvedWallpapers[id] = url;
-        this.updateSettings({ [key]: reference });
+        const settingsChanged = this.updateSettings({ [key]: reference });
         // The reference is stable (wallpaper-cache:<slot>) even when its image
         // bytes change, so settingsChange alone cannot represent every update.
         this.emit('wallpaperChange', { slot: id, key, reference, url });
+        if (id === 'desktop' && this.settings.accentColorAuto === true) {
+            const accentUpdate = settingsChanged
+                ? this._wallpaperAccentPromise
+                : this.updateAccentFromWallpaper(url);
+            if (accentUpdate) await accentUpdate;
+        }
         return reference;
     },
 
@@ -159,6 +172,7 @@ const State = {
         ensureFolder('desktop', '桌面');
         ensureFolder('documents', '文档');
         ensureFolder('pictures', '图片');
+        ensureFolder('music', '音乐');
         ensureFolder('downloads', '下载');
         ensureFolder('recycle', '回收站');
         // 保存修复结果
@@ -266,7 +280,7 @@ const State = {
             externalFileImportDefaultVersion: 1,
             enableSystemInteractionAudio: false,
             enableCrossAppDragDrop: false,
-            enableAppMultiWindow: false,
+            enableAppMultiWindow: true,
             forceRealtimeBlur: false,
             enableWindowBlur: false,
             enableFluentV2: true,
@@ -640,7 +654,7 @@ const State = {
             safeUpdates.accentColorAuto === true ||
             (safeUpdates.wallpaperDesktop !== undefined && this.settings.accentColorAuto === true)
         ) {
-            this.updateAccentFromWallpaper(this.settings.wallpaperDesktop);
+            this._wallpaperAccentPromise = this.updateAccentFromWallpaper(this.settings.wallpaperDesktop);
         }
         if (safeUpdates.enableButtonGlowEffect !== undefined) {
             this.applyButtonGlowSetting();
