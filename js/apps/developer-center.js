@@ -33,7 +33,7 @@ const DeveloperCenterApp = {
             html: 'HTML 内容', css: 'CSS 样式（可选）', js: 'JavaScript 代码（可选）', preview: '预览',
             forceFluent: '强制使用 FluentUI 组件库', forceFluentDesc: '用 FluentOS 内置样式接管按钮、输入框、选择框、勾选框、滑块和滚动条。',
             saveDraft: '暂存项目', package: '一键封装', apiDocs: 'API 参考文档', saved: '项目已暂存',
-            downloadAiSkill: '下载 AI Skill', aiSkillHint: '也可以下载 AI Skill，让 AI 按 Fluent API 规范快速构建 App。',
+            downloadAiSkill: '下载 AI Skill',
             apiDocsReminder: '开始构建前建议先查看 API 参考文档，确认 Fluent 可以封装的能力。',
             apiDocsAiSkillNotice: '尝试使用 AI Skill，快速构建完美且符合 Fluent API 标准的 App。',
             validating: '正在验证 App', validationDesc: '检测在浏览器能力范围内进行，至少需要 1.5 秒。',
@@ -64,7 +64,7 @@ const DeveloperCenterApp = {
             html: 'HTML content', css: 'CSS styles (optional)', js: 'JavaScript code (optional)', preview: 'Preview',
             forceFluent: 'Force FluentUI components', forceFluentDesc: 'Use FluentOS controls for buttons, inputs, selects, checks, sliders, and scrollbars.',
             saveDraft: 'Save draft', package: 'Package now', apiDocs: 'API reference', saved: 'Project saved',
-            downloadAiSkill: 'Download AI Skill', aiSkillHint: 'You can also download the AI Skill to build an App quickly with the Fluent API rules.',
+            downloadAiSkill: 'Download AI Skill',
             apiDocsReminder: 'Review the API reference before building to confirm which capabilities Fluent can package.',
             apiDocsAiSkillNotice: 'Try the AI Skill to quickly build a polished App that follows the Fluent API standard.',
             validating: 'Validating App', validationDesc: 'Checks run within browser capabilities and take at least 1.5 seconds.',
@@ -539,9 +539,6 @@ const DeveloperCenterApp = {
         apiDocsAction.className = 'dc-api-action';
         apiDocsAction.appendChild(this.button(this.text('apiDocs'), 'secondary', () => this.showApiDocs(), 'Book Text'));
         if (this._professionalOnboardingProjectId === project.id) {
-            const hint = document.createElement('small');
-            hint.textContent = this.text('aiSkillHint');
-            apiDocsAction.appendChild(hint);
             queueMicrotask(() => this.showProfessionalOnboarding(project));
         }
         if (this._professionalApiReminderProjectId === project.id) {
