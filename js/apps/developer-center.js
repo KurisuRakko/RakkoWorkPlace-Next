@@ -867,8 +867,8 @@ const DeveloperCenterApp = {
 
     downloadAiSkill() {
         const link = document.createElement('a');
-        link.href = 'docs/fluent-app-builder/SKILL.md';
-        link.download = 'SKILL.md';
+        link.href = 'docs/fluent-app-builder/SKILL.txt';
+        link.download = 'SKILL.txt';
         link.hidden = true;
         document.body.appendChild(link);
         link.click();

@@ -25,6 +25,7 @@ const FilesApp = {
     justFinishedSelecting: false,
     selectionBox: null,
     selectionStart: { x: 0, y: 0 },
+    _lastItemPointer: null,
     
     // 搜索相关
     isSearching: false,
@@ -566,6 +567,16 @@ const FilesApp = {
             }
         }, listenerOptions);
         
+        // 记录这一次操作实际来自鼠标还是触摸，兼容同时具备两者的设备。
+        filesList.addEventListener('pointerdown', (e) => {
+            if (e.isPrimary === false || (typeof e.button === 'number' && e.button !== 0)) return;
+            const item = e.target.closest('.file-item');
+            this._lastItemPointer = item ? {
+                id: item.dataset.id,
+                pointerType: e.pointerType || 'mouse'
+            } : null;
+        }, listenerOptions);
+
         // 文件项点击
         filesList.addEventListener('click', (e) => {
             // 如果刚完成框选，不处理点击事件
@@ -581,22 +592,20 @@ const FilesApp = {
                     this.deselectAllItems();
                     this.selectItem(item);
                 }
+
+                const pointer = this._lastItemPointer;
+                if (pointer?.pointerType === 'touch' && pointer.id === item.dataset.id) {
+                    this.openItemById(item.dataset.id);
+                }
             }
         }, listenerOptions);
         
         filesList.addEventListener('dblclick', (e) => {
             const item = e.target.closest('.file-item');
-            if (item) {
-                const id = item.dataset.id;
-                const node = State.findNode(id);
-                if (node && node.type === 'app') {
-                    WindowManager.openApp(node.appId);
-                } else if (node && node.type === 'folder') {
-                    this.navigateTo(node);
-                } else if (node && node.type === 'file') {
-                    this.openFile(node);
-                }
-            }
+            if (!item) return;
+            const pointer = this._lastItemPointer;
+            if (pointer?.pointerType === 'touch' && pointer.id === item.dataset.id) return;
+            this.openItemById(item.dataset.id);
         }, listenerOptions);
         
         // 拖拽接收
@@ -644,6 +653,18 @@ const FilesApp = {
                 this.handleSearch(query.trim());
             }, 120, true);
         }, listenerOptions);
+    },
+
+    openItemById(id) {
+        const node = State.findNode(id);
+        if (!node) return;
+        if (node.type === 'app') {
+            WindowManager.openApp(node.appId);
+        } else if (node.type === 'folder') {
+            this.navigateTo(node);
+        } else if (node.type === 'file') {
+            this.openFile(node);
+        }
     },
 
     showContextMenu(x, y, hasTarget) {

@@ -16,6 +16,7 @@ const Desktop = {
     justFinishedSelecting: false,
     selectionBox: null,
     selectionStart: { x: 0, y: 0 },
+    _lastIconPointer: null,
 
     // 可用的桌面应用
     apps: [
@@ -705,6 +706,17 @@ const Desktop = {
             }
         });
         
+        // 记录实际输入来源。混合输入设备上不能仅凭 maxTouchPoints 判断，
+        // 否则带触屏的电脑使用鼠标时也会被错误地当成单击打开。
+        this.iconsContainer.addEventListener('pointerdown', (e) => {
+            if (e.isPrimary === false || (typeof e.button === 'number' && e.button !== 0)) return;
+            const icon = e.target.closest('.desktop-icon');
+            this._lastIconPointer = icon ? {
+                nodeId: icon.dataset.nodeId,
+                pointerType: e.pointerType || 'mouse'
+            } : null;
+        });
+
         // 点击图标
         this.iconsContainer.addEventListener('click', (e) => {
             // 如果刚完成框选，不处理点击事件
@@ -722,6 +734,11 @@ const Desktop = {
                     this.deselectAll();
                     this.selectIcon(icon);
                 }
+
+                const pointer = this._lastIconPointer;
+                if (pointer?.pointerType === 'touch' && pointer.nodeId === icon.dataset.nodeId) {
+                    this.openDesktopNode(icon.dataset.nodeId);
+                }
             } else if (!this.isSelecting && !this.justFinishedSelecting) {
                 // 只有在非框选且非刚完成框选时才取消选择
                 this.deselectAll();
@@ -731,32 +748,10 @@ const Desktop = {
         // 双击打开应用
         this.iconsContainer.addEventListener('dblclick', (e) => {
             const icon = e.target.closest('.desktop-icon');
-            if (icon) {
-                const nodeId = icon.dataset.nodeId;
-                const node = State.findNode(nodeId);
-                if (!node) return;
-                if (node.type === 'app') {
-                    // 应用快捷方式：直接打开对应 App
-                    WindowManager.openApp(node.appId, null, { source: 'desktop' });
-                    return;
-                }
-                if (node.type === 'folder') {
-                    WindowManager.openApp('files', null, { source: 'desktop' });
-                    // 延时导航到该文件夹
-                    setTimeout(() => {
-                        const filesComponent = WindowManager.getAppComponent?.('files');
-                        if (filesComponent?.navigateToId) {
-                            filesComponent.navigateToId(nodeId);
-                        }
-                    }, 0);
-                } else if (node.type === 'file') {
-                    if (typeof FilesApp !== 'undefined' && typeof FilesApp.openNodeWithDefaultApp === 'function') {
-                        const opened = FilesApp.openNodeWithDefaultApp(node, { source: 'desktop' });
-                        if (opened) return;
-                    }
-                    WindowManager.openApp('notes', { fileId: node.id }, { source: 'desktop' });
-                }
-            }
+            if (!icon) return;
+            const pointer = this._lastIconPointer;
+            if (pointer?.pointerType === 'touch' && pointer.nodeId === icon.dataset.nodeId) return;
+            this.openDesktopNode(icon.dataset.nodeId);
         });
 
         // 桌面右键菜单（仅在桌面空白区域）
@@ -817,6 +812,28 @@ const Desktop = {
                 this.handleContextMenuAction(action);
             }
         });
+    },
+
+    openDesktopNode(nodeId) {
+        const node = State.findNode(nodeId);
+        if (!node) return;
+        if (node.type === 'app') {
+            WindowManager.openApp(node.appId, null, { source: 'desktop' });
+            return;
+        }
+        if (node.type === 'folder') {
+            WindowManager.openApp('files', null, { source: 'desktop' });
+            setTimeout(() => {
+                const filesComponent = WindowManager.getAppComponent?.('files');
+                if (filesComponent?.navigateToId) filesComponent.navigateToId(nodeId);
+            }, 0);
+        } else if (node.type === 'file') {
+            if (typeof FilesApp !== 'undefined' && typeof FilesApp.openNodeWithDefaultApp === 'function') {
+                const opened = FilesApp.openNodeWithDefaultApp(node, { source: 'desktop' });
+                if (opened) return;
+            }
+            WindowManager.openApp('notes', { fileId: node.id }, { source: 'desktop' });
+        }
     },
 
     selectIcon(icon) {

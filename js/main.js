@@ -1249,7 +1249,7 @@ window.addEventListener('error', (e) => {
  * 全局禁用右键菜单和文字复制（记事本除外）
  */
 const TouchInputSupport = {
-    LONG_PRESS_MS: 1000,
+    LONG_PRESS_MS: 500,
     MOVE_TOLERANCE_PX: 12,
     _activePress: null,
     _lastTouchActivityAt: 0,
@@ -1831,7 +1831,7 @@ const ResourceMonitor = {
 };
 
 window.FluentOS = {
-    version: globalThis.FluentOSResourceManifest?.systemVersion || '2.5.260802',
+    version: globalThis.FluentOSResourceManifest?.systemVersion || '2.5.260802B',
     State,
     Storage,
     notify,
