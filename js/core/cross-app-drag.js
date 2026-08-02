@@ -275,5 +275,214 @@
         }
     };
 
+    /**
+     * Pointer-to-drag bridge for touch screens. Mobile browsers generally do
+     * not start HTML drag-and-drop from touch input, while Desktop and Files
+     * intentionally share the existing drag payload/drop routing. A short,
+     * stationary hold arms dragging; moving before that remains native scroll.
+     */
+    const TouchDragBridge = {
+        HOLD_MS: 380,
+        MOVE_TOLERANCE_PX: 12,
+        DRAG_START_PX: 13,
+        _active: null,
+
+        bind(source, options = {}) {
+            if (!(source instanceof Element) || source.dataset.touchDragBound === 'true') return false;
+            source.dataset.touchDragBound = 'true';
+            const listenerOptions = options.signal ? { signal: options.signal } : undefined;
+            source.addEventListener('pointerdown', (event) => this._onPointerDown(source, event), listenerOptions);
+            source.addEventListener('contextmenu', (event) => {
+                // A stationary hold keeps the system's existing long-press
+                // context menu. Movement after the earlier drag-arm feedback
+                // cancels that global timer and starts dragging instead.
+                if (event.fluentLongPress === true && this._active?.source === source) this.cancel();
+            }, listenerOptions);
+            options.signal?.addEventListener('abort', () => {
+                if (this._active?.source === source) this.cancel();
+            }, { once: true });
+            return true;
+        },
+
+        _createDataTransfer() {
+            const values = new Map();
+            return {
+                dropEffect: 'none',
+                effectAllowed: 'all',
+                files: [],
+                items: [],
+                get types() { return [...values.keys()]; },
+                setData(type, value) { values.set(String(type), String(value)); },
+                getData(type) { return values.get(String(type)) || ''; },
+                clearData(type) {
+                    if (type === undefined) values.clear();
+                    else values.delete(String(type));
+                },
+                setDragImage() {}
+            };
+        },
+
+        _dragEvent(type, state, point, relatedTarget = null) {
+            const event = new Event(type, { bubbles: true, cancelable: true, composed: true });
+            const values = {
+                dataTransfer: state.dataTransfer,
+                clientX: Number(point?.clientX) || 0,
+                clientY: Number(point?.clientY) || 0,
+                screenX: Number(point?.screenX) || 0,
+                screenY: Number(point?.screenY) || 0,
+                relatedTarget
+            };
+            Object.entries(values).forEach(([name, value]) => {
+                try { Object.defineProperty(event, name, { value, enumerable: true }); }
+                catch (_) {}
+            });
+            return event;
+        },
+
+        _onPointerDown(source, event) {
+            if (event.pointerType !== 'touch' || event.isPrimary === false || (typeof event.button === 'number' && event.button !== 0)) return;
+            this.cancel();
+            const state = {
+                source,
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startY: event.clientY,
+                armed: false,
+                dragging: false,
+                dataTransfer: null,
+                ghost: null,
+                target: null,
+                dropAllowed: false,
+                timer: 0,
+                lastPoint: event
+            };
+            this._active = state;
+
+            const onMove = (moveEvent) => this._onPointerMove(state, moveEvent);
+            const onFinish = (finishEvent) => this._finish(state, finishEvent);
+            state.removeListeners = () => {
+                document.removeEventListener('pointermove', onMove);
+                document.removeEventListener('pointerup', onFinish);
+                document.removeEventListener('pointercancel', onFinish);
+            };
+            document.addEventListener('pointermove', onMove, { passive: false });
+            document.addEventListener('pointerup', onFinish);
+            document.addEventListener('pointercancel', onFinish);
+
+            state.timer = setTimeout(() => {
+                state.timer = 0;
+                if (this._active !== state || !source.isConnected) return;
+                state.armed = true;
+                source.classList.add('touch-drag-armed');
+                try { source.setPointerCapture?.(state.pointerId); } catch (_) {}
+                try { navigator.vibrate?.(18); } catch (_) {}
+            }, this.HOLD_MS);
+        },
+
+        _onPointerMove(state, event) {
+            if (this._active !== state || event.pointerId !== state.pointerId) return;
+            state.lastPoint = event;
+            const distance = Math.hypot(event.clientX - state.startX, event.clientY - state.startY);
+            if (!state.armed) {
+                if (distance > this.MOVE_TOLERANCE_PX) this._cleanup(state);
+                return;
+            }
+            if (event.cancelable) event.preventDefault();
+            if (!state.dragging) {
+                if (distance < this.DRAG_START_PX) return;
+                if (!this._beginDrag(state, event)) return;
+            }
+            this._updateTarget(state, event);
+        },
+
+        _beginDrag(state, event) {
+            state.dataTransfer = this._createDataTransfer();
+            const startEvent = this._dragEvent('dragstart', state, event);
+            if (!state.source.dispatchEvent(startEvent)) {
+                this._cleanup(state);
+                return false;
+            }
+            state.dragging = true;
+            state.source.classList.remove('touch-drag-armed');
+            document.body.classList.add('touch-drag-active');
+            state.ghost = document.createElement('div');
+            state.ghost.className = 'taskbar-drag-ghost desktop-native-drag-ghost touch-drag-ghost';
+            const image = state.source.querySelector('img')?.cloneNode(false);
+            if (image) {
+                image.alt = '';
+                state.ghost.appendChild(image);
+            }
+            document.body.appendChild(state.ghost);
+            this._moveGhost(state, event);
+            return true;
+        },
+
+        _moveGhost(state, point) {
+            if (!state.ghost) return;
+            state.ghost.style.left = `${point.clientX}px`;
+            state.ghost.style.top = `${point.clientY}px`;
+            state.ghost.classList.toggle('droppable', state.dropAllowed);
+        },
+
+        _updateTarget(state, point) {
+            const nextTarget = document.elementFromPoint(point.clientX, point.clientY);
+            if (nextTarget !== state.target) {
+                if (state.target) state.target.dispatchEvent(this._dragEvent('dragleave', state, point, nextTarget));
+                if (nextTarget) nextTarget.dispatchEvent(this._dragEvent('dragenter', state, point, state.target));
+                state.target = nextTarget;
+            }
+            state.dropAllowed = !!state.target && !state.target.dispatchEvent(this._dragEvent('dragover', state, point));
+            this._moveGhost(state, point);
+        },
+
+        _suppressClick(source) {
+            const suppress = (event) => {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            };
+            source.addEventListener('click', suppress, { capture: true, once: true });
+            setTimeout(() => source.removeEventListener('click', suppress, true), 800);
+        },
+
+        _finish(state, event) {
+            if (this._active !== state || event.pointerId !== state.pointerId) return;
+            if (state.armed || state.dragging) this._suppressClick(state.source);
+            if (state.dragging) {
+                if (event.type === 'pointerup') {
+                    this._updateTarget(state, event);
+                    if (state.dropAllowed && state.target) {
+                        state.target.dispatchEvent(this._dragEvent('drop', state, event));
+                    }
+                }
+                state.source.dispatchEvent(this._dragEvent('dragend', state, event));
+            }
+            this._cleanup(state);
+        },
+
+        _cleanup(state) {
+            if (!state) return;
+            clearTimeout(state.timer);
+            state.removeListeners?.();
+            if (state.target && state.dragging) {
+                state.target.dispatchEvent(this._dragEvent('dragleave', state, state.lastPoint, null));
+            }
+            state.source?.classList.remove('touch-drag-armed');
+            try {
+                if (state.source?.hasPointerCapture?.(state.pointerId)) state.source.releasePointerCapture(state.pointerId);
+            } catch (_) {}
+            state.ghost?.remove();
+            document.body.classList.remove('touch-drag-active');
+            if (this._active === state) this._active = null;
+        },
+
+        cancel() {
+            const state = this._active;
+            if (!state) return;
+            if (state.dragging) state.source.dispatchEvent(this._dragEvent('dragend', state, state.lastPoint));
+            this._cleanup(state);
+        }
+    };
+
     globalThis.CrossAppDrag = CrossAppDrag;
+    globalThis.TouchDragBridge = TouchDragBridge;
 })();

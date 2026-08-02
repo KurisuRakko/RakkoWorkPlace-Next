@@ -1194,19 +1194,7 @@ const DeveloperCenterApp = {
         update('malicious', dangerous ? 'fail' : 'pass', dangerous ? `Blocked pattern: ${dangerous.name}` : 'No blocked code pattern was found', dangerousDiagnostics);
 
         update('apis', 'running');
-        const apiRules = [
-            { regex: /\bfetch\s*\(/, name: 'fetch' }, { regex: /\bXMLHttpRequest\b/, name: 'XMLHttpRequest' },
-            { regex: /\bWebSocket\b/, name: 'WebSocket' }, { regex: /\bEventSource\b/, name: 'EventSource' },
-            { regex: /navigator\s*\.\s*sendBeacon\s*\(/, name: 'navigator.sendBeacon' },
-            { regex: /<\s*img\b[^>]*\bsrc\s*=\s*["']?\s*https?:\/\//i, name: 'remote img src' },
-            { regex: /<\s*iframe\b[^>]*\bsrc\s*=\s*["']?\s*https?:\/\//i, name: 'remote iframe src' },
-            { regex: /<\s*script\b[^>]*\bsrc\s*=\s*["']?\s*https?:\/\//i, name: 'remote script src' },
-            { regex: /<\s*link\b[^>]*\bhref\s*=\s*["']?\s*https?:\/\//i, name: 'remote link href' },
-            { regex: /(?:url\s*\(\s*|@import\s+)["']?\s*https?:\/\//i, name: 'remote CSS URL' },
-            { regex: /\bindexedDB\b/, name: 'indexedDB' },
-            { regex: /\blocalStorage\b|\bsessionStorage\b/, name: 'direct browser storage' },
-            { regex: /navigator\s*\.\s*(?:clipboard|geolocation|mediaDevices|usb|serial|bluetooth)/, name: 'privileged navigator API' }
-        ];
+        const apiRules = DeveloperCenterStore.UNSUPPORTED_BROWSER_API_RULES;
         const declaredPermissions = new Set(Array.isArray(project.permissions) ? project.permissions : []);
         const invalidPermission = [...declaredPermissions].find((permission) => !DeveloperCenterStore.SUPPORTED_PERMISSIONS.includes(permission));
         const permissionRules = [

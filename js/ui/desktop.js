@@ -633,6 +633,8 @@ const Desktop = {
                 });
                 draggingIds = [node.id];
             });
+
+            globalThis.TouchDragBridge?.bind(el);
             
             this.iconsContainer.appendChild(el);
         });

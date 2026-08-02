@@ -929,6 +929,23 @@ html,
     border-color: #2b2b2b;
 }
 
+.desktop-icon.touch-drag-armed,
+.file-item.touch-drag-armed {
+    background: rgba(var(--accent-rgb, 0, 120, 212), 0.18) !important;
+    box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb, 0, 120, 212), 0.5);
+    touch-action: none !important;
+}
+
+.touch-drag-ghost {
+    transition: none;
+    transform: scale(0.98);
+}
+
+body.touch-drag-active {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
 /* ============ 右键菜单 ============ */
 .context-menu {
     position: fixed;

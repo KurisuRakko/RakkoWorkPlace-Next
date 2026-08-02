@@ -22,6 +22,20 @@ const DeveloperCenterStore = {
         'network.request',
         'network.image'
     ],
+    UNSUPPORTED_BROWSER_API_RULES: Object.freeze([
+        Object.freeze({ regex: /\bfetch\s*\(/i, name: 'fetch' }),
+        Object.freeze({ regex: /\bXMLHttpRequest\b/i, name: 'XMLHttpRequest' }),
+        Object.freeze({ regex: /\bWebSocket\b/i, name: 'WebSocket' }),
+        Object.freeze({ regex: /\bEventSource\b/i, name: 'EventSource' }),
+        Object.freeze({ regex: /navigator\s*\.\s*sendBeacon\s*\(/i, name: 'navigator.sendBeacon' }),
+        Object.freeze({ regex: /\b(?:Worker|SharedWorker|WebAssembly)\b/i, name: 'worker or WebAssembly' }),
+        Object.freeze({ regex: /<\s*(?:img|iframe|script)\b[^>]*(?:src)\s*=\s*["']?\s*https?:\/\//i, name: 'remote embedded resource' }),
+        Object.freeze({ regex: /<\s*link\b[^>]*href\s*=\s*["']?\s*https?:\/\//i, name: 'remote stylesheet' }),
+        Object.freeze({ regex: /(?:url\s*\(\s*|@import\s+)["']?\s*https?:\/\//i, name: 'remote CSS URL' }),
+        Object.freeze({ regex: /\bindexedDB\b/i, name: 'indexedDB' }),
+        Object.freeze({ regex: /\blocalStorage\b|\bsessionStorage\b/i, name: 'direct browser storage' }),
+        Object.freeze({ regex: /navigator\s*\.\s*(?:clipboard|geolocation|mediaDevices|usb|serial|bluetooth)/i, name: 'privileged navigator API' })
+    ]),
     PERMISSION_DETAILS: Object.freeze({
         'storage.local': Object.freeze({
             nameZh: '读写浏览器本地存储', nameEn: 'Read and write browser local storage',
@@ -670,21 +684,7 @@ const DeveloperCenterStore = {
         const malicious = maliciousRules.find((rule) => rule.regex.test(combined));
         if (malicious) return fail('malicious', `Blocked code pattern: ${malicious.name}`);
 
-        const apiRules = [
-            { regex: /\bfetch\s*\(/i, name: 'fetch' },
-            { regex: /\bXMLHttpRequest\b/i, name: 'XMLHttpRequest' },
-            { regex: /\bWebSocket\b/i, name: 'WebSocket' },
-            { regex: /\bEventSource\b/i, name: 'EventSource' },
-            { regex: /navigator\s*\.\s*sendBeacon\s*\(/i, name: 'navigator.sendBeacon' },
-            { regex: /\b(?:Worker|SharedWorker|WebAssembly)\b/i, name: 'worker or WebAssembly' },
-            { regex: /<\s*(?:img|iframe|script)\b[^>]*(?:src)\s*=\s*["']?\s*https?:\/\//i, name: 'remote embedded resource' },
-            { regex: /<\s*link\b[^>]*href\s*=\s*["']?\s*https?:\/\//i, name: 'remote stylesheet' },
-            { regex: /(?:url\s*\(\s*|@import\s+)["']?\s*https?:\/\//i, name: 'remote CSS URL' },
-            { regex: /\bindexedDB\b/i, name: 'indexedDB' },
-            { regex: /\blocalStorage\b|\bsessionStorage\b/i, name: 'direct browser storage' },
-            { regex: /navigator\s*\.\s*(?:clipboard|geolocation|mediaDevices|usb|serial|bluetooth)/i, name: 'privileged navigator API' }
-        ];
-        const apiMatch = apiRules.find((rule) => rule.regex.test(combined));
+        const apiMatch = this.UNSUPPORTED_BROWSER_API_RULES.find((rule) => rule.regex.test(combined));
         if (apiMatch) return fail('api', `High-risk browser API: ${apiMatch.name}`);
 
         const permissions = new Set(declaredPermissions);

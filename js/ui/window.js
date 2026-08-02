@@ -1456,7 +1456,8 @@ const WindowManager = {
             return false;
         }
 
-        if (typeof DeveloperCreatedRuntime !== 'undefined' && DeveloperCreatedRuntime.interceptLaunch?.(appId, data, options)) {
+        const createdAppRuntime = globalThis.DeveloperCreatedRuntime;
+        if (createdAppRuntime?.interceptLaunch?.(appId, data, options)) {
             return false;
         }
 

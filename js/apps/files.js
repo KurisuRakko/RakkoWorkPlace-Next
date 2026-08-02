@@ -1633,6 +1633,8 @@ const FilesApp = {
                 draggingIds = [node.id];
             }, listenerOptions);
 
+            globalThis.TouchDragBridge?.bind(item, { signal: this._listController?.signal });
+
             // Allow both FluentOS nodes and external OS files to target a folder item.
             if (node.type === 'folder') {
                 const externalEnabled = () => !!(window.FileImport && typeof FileImport.enabled === 'function' && FileImport.enabled());

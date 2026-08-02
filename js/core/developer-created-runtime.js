@@ -109,18 +109,24 @@ const DeveloperCreatedRuntime = {
     },
 
     _createCapabilityProfile(app, appId, options = {}) {
+        const preview = options.preview === true;
         const readOnly = options.readOnly === true;
         let network = { connect: [], image: [] };
         if (!readOnly) {
             try { network = DeveloperCenterStore.normalizeNetworkConfig(app?.network); }
             catch (_) { network = { connect: [], image: [] }; }
         }
-        const declaredPermissions = readOnly ? [] : this._declaredPermissions(app);
-        const permissions = readOnly ? [] : this._grantedPermissions(app, declaredPermissions);
+        const declaredPermissions = preview
+            ? [...DeveloperCenterStore.SUPPORTED_PERMISSIONS]
+            : (readOnly ? [] : this._declaredPermissions(app));
+        const permissions = preview
+            ? [...declaredPermissions]
+            : (readOnly ? [] : this._grantedPermissions(app, declaredPermissions));
         return Object.freeze({
             id: String(appId || app?.id || ''),
             name: String(app?.name || 'Created App'),
             title: String(app?.title || app?.name || 'Created App'),
+            preview,
             readOnly,
             declaredPermissions: Object.freeze(declaredPermissions),
             permissions: Object.freeze(permissions),
@@ -184,6 +190,7 @@ const DeveloperCreatedRuntime = {
     interceptLaunch(appId, data = null, options = {}) {
         if (options?.skipCreatedAppPermissionPreflight === true) return false;
         const app = this.apps.get(String(appId || ''));
+        if (String(appId || '') === 'developer-center-preview') return false;
         if (!app || !this._declaredPermissions(app).includes('storage.local')) return false;
         if (this.getPermissionDecision(app.id, 'storage.local')) return false;
 
@@ -192,13 +199,29 @@ const DeveloperCreatedRuntime = {
         // created. All other capabilities remain authenticated on first use.
         if (!this._launchPreflights.has(app.id)) {
             const launch = this._requestPermissionDecision(app, 'storage.local')
-                .catch(() => 'denied')
                 .then(() => {
                     if (app.type === 'pwa') this._registerPwa(app);
                     return WindowManager.openApp(app.id, data, {
                         ...options,
                         skipCreatedAppPermissionPreflight: true
                     });
+                })
+                .catch((error) => {
+                    // Never open a storage-enabled App unless the user has made
+                    // an explicit choice. Treating a dialog-rendering failure as
+                    // a denial would silently bypass the required pre-open prompt.
+                    console.error('[CreatedApp] Local storage permission preflight failed', error);
+                    if (typeof FluentUI !== 'undefined' && typeof FluentUI.Toast === 'function') {
+                        const english = typeof I18n !== 'undefined' && I18n.currentLang === 'en';
+                        FluentUI.Toast({
+                            title: english ? 'Unable to verify permission' : '无法确认权限',
+                            message: english
+                                ? 'The App was not opened because its local storage permission could not be verified. Please try again.'
+                                : '由于无法确认本地存储权限，此 App 未打开。请重试。',
+                            type: 'error'
+                        });
+                    }
+                    return false;
                 })
                 .finally(() => {
                     if (this._launchPreflights.get(app.id) === launch) this._launchPreflights.delete(app.id);
@@ -239,6 +262,7 @@ const DeveloperCreatedRuntime = {
         const profile = registration?.profile;
         const info = DeveloperCenterStore.permissionInfo(permission, 'en');
         if (!profile?.declaredPermissions.includes(permission)) throw new Error(`Permission is not declared: ${info.name}`);
+        if (profile.preview === true) return true;
         const current = this.getPermissionDecision(profile.id, permission);
         if (current === 'granted') return true;
         if (current === 'denied') throw new Error(`Permission was denied: ${info.name}`);
@@ -267,7 +291,9 @@ const DeveloperCreatedRuntime = {
             : '';
         const appName = String(app.name || app.title || 'App');
         const content = `<div class="app-permission-dialog"><p>${this.escapeHtml(info.description)}</p>${domainHtml}<small>${english ? 'Fluent will remember this choice. If denied, this feature stays unavailable while the rest of the App can continue to work.' : 'Fluent 会记住本次选择。拒绝后此项功能将持续不可用，App 的其他功能仍可继续使用。'}</small></div>`;
-        if (typeof FluentUI === 'undefined' || typeof FluentUI.Dialog !== 'function') return Promise.resolve('denied');
+        if (typeof FluentUI === 'undefined' || typeof FluentUI.Dialog !== 'function') {
+            return Promise.reject(new Error('Permission dialog is unavailable'));
+        }
         return new Promise((resolve) => FluentUI.Dialog({
             type: 'info',
             title: english ? `“${this.escapeHtml(appName)}” requests: ${this.escapeHtml(info.name)}` : `“${this.escapeHtml(appName)}”请求${this.escapeHtml(info.name)}`,
@@ -309,7 +335,15 @@ const DeveloperCreatedRuntime = {
         const handshakeToken = this._createHandshakeToken();
         const profile = this._createCapabilityProfile(app, appId, options);
         frame.className = 'created-app-frame';
-        frame.sandbox = 'allow-scripts allow-forms allow-modals allow-downloads';
+        // Preview is an explicit developer-only surface. It deliberately uses
+        // a same-origin, broadly enabled sandbox so native browser APIs work;
+        // installed Apps continue to use the restrictive branch below.
+        frame.sandbox = profile.preview
+            ? 'allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-popups-to-escape-sandbox allow-pointer-lock allow-presentation allow-orientation-lock allow-storage-access-by-user-activation allow-top-navigation-by-user-activation'
+            : 'allow-scripts allow-forms allow-modals allow-downloads';
+        if (profile.preview) {
+            frame.setAttribute('allow', 'autoplay; bluetooth; camera; clipboard-read; clipboard-write; display-capture; encrypted-media; fullscreen; geolocation; hid; microphone; midi; payment; picture-in-picture; publickey-credentials-get; screen-wake-lock; serial; usb; web-share; xr-spatial-tracking');
+        }
         frame.setAttribute('referrerpolicy', 'no-referrer');
         frame.setAttribute('title', app.title || app.name || 'Created App');
         frame.srcdoc = this.buildDocument(app, { capabilityProfile: profile, handshakeToken });
@@ -494,7 +528,9 @@ const DeveloperCreatedRuntime = {
                 .map((hostname) => ` https://${hostname}`)
                 .join('');
         } catch (_) {}
-        const csp = `default-src 'none'; script-src 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:${allowedImageSources}; font-src 'self' data:; connect-src 'none'; frame-src 'none'; media-src 'none'; object-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'; navigate-to 'none'`;
+        const csp = capabilityProfile.preview
+            ? `default-src * data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' blob:; style-src * 'unsafe-inline'; img-src * data: blob:; font-src * data: blob:; connect-src * data: blob:; frame-src * data: blob:; media-src * data: blob:; object-src * data: blob:; worker-src * data: blob:; base-uri *; form-action *`
+            : `default-src 'none'; script-src 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:${allowedImageSources}; font-src 'self' data:; connect-src 'none'; frame-src 'none'; media-src 'none'; object-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'; navigate-to 'none'`;
         const safeJs = String(app.js || '').replace(/<\/script/gi, '<\\/script');
         const safeCss = String(app.css || '').replace(/<\/style/gi, '<\\/style');
         const html = String(app.html || '<main><h1>Hello, FluentOS!</h1></main>');
@@ -627,7 +663,7 @@ const DeveloperCreatedRuntime = {
             throw new Error('Only credential-free HTTPS URLs on the default port are allowed');
         }
         const allowed = group === 'image' ? profile.network.image : profile.network.connect;
-        if (!allowed.includes(url.hostname.toLowerCase().replace(/\.$/, ''))) {
+        if (profile.preview !== true && !allowed.includes(url.hostname.toLowerCase().replace(/\.$/, ''))) {
             throw new Error(`Domain is not in this App's ${group} allowlist`);
         }
         return url;
@@ -1047,6 +1083,7 @@ const DeveloperCreatedRuntime = {
     openPreview(app) {
         const previewId = 'developer-center-preview';
         const previewApp = { ...app, id: previewId, name: app.name || 'Preview', title: app.title || app.name || 'Preview' };
+        this._notifyPreviewUnsupportedApis(previewApp);
         this.apps.set(previewId, previewApp);
         WindowManager.appConfigs[previewId] = {
             title: `${previewApp.title} — Preview`,
@@ -1063,6 +1100,26 @@ const DeveloperCreatedRuntime = {
         }
         DeveloperCenterPreviewApp.setApp(previewApp);
         WindowManager.openApp(previewId);
+    },
+
+    _notifyPreviewUnsupportedApis(app) {
+        const combined = `${String(app?.html || '')}\n${String(app?.css || '')}\n${String(app?.js || '')}`;
+        const names = [...new Set(DeveloperCenterStore.UNSUPPORTED_BROWSER_API_RULES
+            .filter((rule) => rule.regex.test(combined))
+            .map((rule) => rule.name))];
+        if (!names.length) return false;
+        const english = typeof I18n !== 'undefined' && I18n.currentLang === 'en';
+        const title = english ? `${app.name} preview warning` : `${app.name} 预览警告`;
+        const list = names.slice(0, 4).join(', ');
+        const extra = names.length > 4 ? ` (+${names.length - 4})` : '';
+        const message = english
+            ? `Preview allowed unsupported browser APIs: ${list}${extra}. Replace them with FluentOS APIs or packaging will fail.`
+            : `预览已放行不受支持的浏览器 API：${list}${extra}。请改用 FluentOS API，否则无法通过封装。`;
+        State.addNotification({ title, message, type: 'warning', sourceAppId: 'developer-center' });
+        if (typeof FluentUI !== 'undefined' && typeof FluentUI.Toast === 'function') {
+            FluentUI.Toast({ title, message, type: 'warning', duration: 7000 });
+        }
+        return true;
     },
 
     refreshShell() {
