@@ -425,7 +425,7 @@ window.addEventListener('message', async (event) => {
 
 ## 10. Developer Center 创建的 App
 
-Developer Center 封装的 App 在 sandbox iframe 中运行，只能通过注入的异步 `FluentOS` bridge 请求宿主能力，不能直接读取宿主页面或普通浏览器存储。使用 `FluentOS.storage` 前必须声明 `storage.local`；需要剪贴板能力时，必须显式声明 `clipboard.read`、`clipboard.write` 或两者。调用仍受授权快照以及浏览器安全策略约束。
+Developer Center 封装的 App 在 sandbox iframe 中运行，只能通过注入的异步 `FluentOS` bridge 请求宿主能力，不能直接读取宿主页面或普通浏览器存储。使用 `FluentOS.storage` 前必须声明 `storage.local`；需要剪贴板能力时，必须显式声明 `clipboard.read`、`clipboard.write` 或两者。安装后所有已声明权限默认不可用，但 App 可以直接打开；专业 App 首次实际调用某项权限 API 时才会出现该项认证弹窗。允许和拒绝都会被记住，拒绝后不会重复询问。
 
 预览窗口始终使用只读能力配置：不会继承项目声明的任何权限或网络白名单，只允许读取系统主题/状态/语言和窗口信息。通知、本地存储、修改窗口或主题、文件、桌面、剪贴板及网络调用都会被拒绝。要测试这些能力，应先通过安全检查和用户授权封装 App，再在正式窗口中运行。
 
@@ -437,7 +437,7 @@ Developer Center 封装的 App 在 sandbox iframe 中运行，只能通过注入
 - 最多 128 个键。
 - 单个 JSON 序列化值最多 100 KiB。
 
-bridge 使用一次性带令牌的窗口握手建立专用 `MessageChannel`，后续 API 请求和宿主状态都只经过传递给该 iframe 的端口。挂载窗口时，运行时会创建不可变的授权快照，其中固定 App 标识、名称、只读状态、已批准权限和网络域名白名单。之后修改项目或重新注册 App 不会扩大已打开 iframe 的权限；关闭并重新打开后才会应用新的已批准配置。
+bridge 使用一次性带令牌的窗口握手建立专用 `MessageChannel`，后续 API 请求和宿主状态都只经过传递给该 iframe 的端口。挂载窗口时，运行时会创建不可变的能力快照，其中固定 App 标识、名称、只读状态、已声明权限和网络域名白名单；每次受限调用还会读取该 App 持久化的用户决定。之后修改项目或重新注册 App 不会扩大已打开 iframe 的声明范围；关闭并重新打开后才会应用新的声明配置。
 
 ## 11. 网络、权限与安全
 

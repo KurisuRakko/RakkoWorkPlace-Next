@@ -923,36 +923,72 @@ const StartMenu = {
     },
 
     /**
-     * 开始菜单 App 图标的拖拽：超过阈值后菜单自动收起、
-     * 幽灵图标跟随鼠标，松手落在桌面区域时创建桌面快捷方式。
+     * 鼠标移动超过阈值即可拖拽；触控必须静止长按 1 秒后才进入拖拽模式。
+     * 长按前的手指移动完全交给列表的原生滚动，避免滑动时误拖 App。
      */
     _onAppPointerDown(e) {
         if (typeof e.button === 'number' && e.button !== 0) return;
         const appEl = e.target.closest('.start-app');
         if (!appEl || !appEl.dataset.appId) return;
-        // 阻止图标 img / 文字的原生拖拽与选区拖拽（click 不受影响）
-        e.preventDefault();
+        const isTouch = e.pointerType === 'touch';
+        // 触控不能在按下阶段阻止默认行为，否则浏览器无法启动原生惯性滚动。
+        if (!isTouch) e.preventDefault();
         const appId = appEl.dataset.appId;
         const startX = e.clientX;
         const startY = e.clientY;
+        const pointerId = e.pointerId;
         let ghost = null;
         let dragging = false;
+        let dragArmed = !isTouch;
+        let holdTimer = 0;
+        let listenersAttached = true;
+
+        const clearHoldTimer = () => {
+            if (!holdTimer) return;
+            clearTimeout(holdTimer);
+            holdTimer = 0;
+        };
+
+        const removeListeners = () => {
+            if (!listenersAttached) return;
+            listenersAttached = false;
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onUp);
+            document.removeEventListener('pointercancel', onUp);
+        };
+
+        const beginDragging = (ev) => {
+            dragging = true;
+            this._appDragging = true;
+            appEl.classList.remove('touch-drag-armed');
+            this.close();
+            const app = Desktop.apps.find(a => a.id === appId);
+            ghost = document.createElement('div');
+            ghost.className = 'taskbar-drag-ghost';
+            const icon = document.createElement('img');
+            icon.src = String(app?.icon || '');
+            icon.alt = '';
+            ghost.appendChild(icon);
+            document.body.appendChild(ghost);
+            ghost.style.left = `${ev.clientX}px`;
+            ghost.style.top = `${ev.clientY}px`;
+        };
 
         const onMove = (ev) => {
+            if (ev.pointerId !== pointerId) return;
+            const distance = Math.hypot(ev.clientX - startX, ev.clientY - startY);
+            if (isTouch && !dragArmed) {
+                if (distance >= 12) {
+                    clearHoldTimer();
+                    removeListeners();
+                }
+                return;
+            }
+
+            if (isTouch && ev.cancelable) ev.preventDefault();
             if (!dragging) {
-                if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < 10) return;
-                dragging = true;
-                this._appDragging = true;
-                // 收起开始菜单，露出桌面便于放置
-                this.close();
-                const app = Desktop.apps.find(a => a.id === appId);
-                ghost = document.createElement('div');
-                ghost.className = 'taskbar-drag-ghost';
-                const icon = document.createElement('img');
-                icon.src = String(app?.icon || '');
-                icon.alt = '';
-                ghost.appendChild(icon);
-                document.body.appendChild(ghost);
+                if (distance < (isTouch ? 4 : 10)) return;
+                beginDragging(ev);
             }
             ghost.style.left = `${ev.clientX}px`;
             ghost.style.top = `${ev.clientY}px`;
@@ -960,10 +996,17 @@ const StartMenu = {
         };
 
         const onUp = (ev) => {
-            document.removeEventListener('pointermove', onMove);
-            document.removeEventListener('pointerup', onUp);
-            document.removeEventListener('pointercancel', onUp);
-            if (!dragging) return;
+            if (ev.pointerId !== pointerId) return;
+            clearHoldTimer();
+            removeListeners();
+            appEl.classList.remove('touch-drag-armed');
+            try {
+                if (appEl.hasPointerCapture?.(pointerId)) appEl.releasePointerCapture(pointerId);
+            } catch (_) {}
+            if (!dragging) {
+                if (isTouch && dragArmed) setTimeout(() => { this._appDragging = false; }, 0);
+                return;
+            }
             if (ghost) ghost.remove();
             if (ev.type === 'pointerup' && Taskbar._isDesktopDropPoint(ev.clientX, ev.clientY)) {
                 Desktop.addAppShortcut(appId);
@@ -972,7 +1015,19 @@ const StartMenu = {
             setTimeout(() => { this._appDragging = false; }, 0);
         };
 
-        document.addEventListener('pointermove', onMove);
+        if (isTouch) {
+            holdTimer = setTimeout(() => {
+                holdTimer = 0;
+                if (!listenersAttached || !appEl.isConnected) return;
+                dragArmed = true;
+                this._appDragging = true;
+                appEl.classList.add('touch-drag-armed');
+                try { appEl.setPointerCapture?.(pointerId); } catch (_) {}
+                try { navigator.vibrate?.(18); } catch (_) {}
+            }, 1000);
+        }
+
+        document.addEventListener('pointermove', onMove, { passive: false });
         document.addEventListener('pointerup', onUp);
         document.addEventListener('pointercancel', onUp);
     },

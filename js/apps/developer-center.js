@@ -12,6 +12,10 @@ const DeveloperCenterApp = {
     _validationRun: 0,
     _renderSequence: 0,
     _pendingPackageProjectId: null,
+    _professionalOnboardingProjectId: null,
+    _professionalApiReminderProjectId: null,
+    _professionalOnboardingDialogShown: false,
+    _lastAiSkillNotificationAt: 0,
     _secondaryNavigationTimer: null,
     _editorAppearance: { fontFamily: 'Cascadia Code, Consolas, monospace', fontSize: 13 },
 
@@ -29,6 +33,9 @@ const DeveloperCenterApp = {
             html: 'HTML 内容', css: 'CSS 样式（可选）', js: 'JavaScript 代码（可选）', preview: '预览',
             forceFluent: '强制使用 FluentUI 组件库', forceFluentDesc: '用 FluentOS 内置样式接管按钮、输入框、选择框、勾选框、滑块和滚动条。',
             saveDraft: '暂存项目', package: '一键封装', apiDocs: 'API 参考文档', saved: '项目已暂存',
+            downloadAiSkill: '下载 AI Skill', aiSkillHint: '也可以下载 AI Skill，让 AI 按 Fluent API 规范快速构建 App。',
+            apiDocsReminder: '开始构建前建议先查看 API 参考文档，确认 Fluent 可以封装的能力。',
+            apiDocsAiSkillNotice: '尝试使用 AI Skill，快速构建完美且符合 Fluent API 标准的 App。',
             validating: '正在验证 App', validationDesc: '检测在浏览器能力范围内进行，至少需要 1.5 秒。',
             retry: '重试', backEdit: '返回编辑', finishDesktop: '完成并添加到桌面', finish: '完成封装',
             myAppsTitle: '我的 Apps', myAppsDesc: '管理、运行、导入和分享你已封装的 App。', import: '导入安装包',
@@ -57,6 +64,9 @@ const DeveloperCenterApp = {
             html: 'HTML content', css: 'CSS styles (optional)', js: 'JavaScript code (optional)', preview: 'Preview',
             forceFluent: 'Force FluentUI components', forceFluentDesc: 'Use FluentOS controls for buttons, inputs, selects, checks, sliders, and scrollbars.',
             saveDraft: 'Save draft', package: 'Package now', apiDocs: 'API reference', saved: 'Project saved',
+            downloadAiSkill: 'Download AI Skill', aiSkillHint: 'You can also download the AI Skill to build an App quickly with the Fluent API rules.',
+            apiDocsReminder: 'Review the API reference before building to confirm which capabilities Fluent can package.',
+            apiDocsAiSkillNotice: 'Try the AI Skill to quickly build a polished App that follows the Fluent API standard.',
             validating: 'Validating App', validationDesc: 'Checks run within browser capabilities and take at least 1.5 seconds.',
             retry: 'Retry', backEdit: 'Back to editor', finishDesktop: 'Finish and add to desktop', finish: 'Finish packaging',
             myAppsTitle: 'My Apps', myAppsDesc: 'Manage, run, import, and share packaged Apps.', import: 'Import package',
@@ -401,6 +411,10 @@ const DeveloperCenterApp = {
             onConfirm: async (value) => {
                 const name = String(value || '').trim();
                 if (await DeveloperCenterStore.nameExists(name)) { this.toast(this.text('invalidName'), 'error'); return; }
+                if (type === 'professional') {
+                    const onboarding = await DeveloperCenterStore.get('preferences', 'professional-app-api-onboarding-v1');
+                    this._professionalOnboardingProjectId = onboarding?.value === true ? null : '__pending__';
+                }
                 const project = await DeveloperCenterStore.saveProject({
                     name, type, title: name, url: type === 'pwa' ? 'https://' : '',
                     icon: 'Theme/Icon/App_icon/created_app.png',
@@ -411,6 +425,7 @@ const DeveloperCenterApp = {
                     permissions: [],
                     network: { connect: [], image: [] }
                 });
+                if (this._professionalOnboardingProjectId === '__pending__') this._professionalOnboardingProjectId = project.id;
                 this.openProject(project.id);
             }
         });
@@ -419,6 +434,10 @@ const DeveloperCenterApp = {
     async openProject(projectId) {
         const project = await DeveloperCenterStore.get('projects', projectId);
         if (!this.canViewProjectSource(project) || !this.frame?.pageEl) return;
+        if (project.type === 'professional' && this._professionalOnboardingProjectId !== project.id) {
+            const onboarding = await DeveloperCenterStore.get('preferences', 'professional-app-api-onboarding-v1');
+            this._professionalApiReminderProjectId = onboarding?.value === true ? project.id : null;
+        }
         this._afterSecondaryExit(() => {
             this.activePage = 'build';
             this.activeProjectId = project.id;
@@ -516,8 +535,21 @@ const DeveloperCenterApp = {
         this.bindIconPicker(layout, project);
         this.mountToggle(layout.querySelector('[data-toggle="force"]'), this.text('forceFluent'), this.text('forceFluentDesc'), project.forceFluentUI === true, (value) => { project.forceFluentUI = value; });
         this.renderPermissionPicker(layout.querySelector('[data-permission-picker]'), project.permissions || []);
+        const apiDocsAction = document.createElement('div');
+        apiDocsAction.className = 'dc-api-action';
+        apiDocsAction.appendChild(this.button(this.text('apiDocs'), 'secondary', () => this.showApiDocs(), 'Book Text'));
+        if (this._professionalOnboardingProjectId === project.id) {
+            const hint = document.createElement('small');
+            hint.textContent = this.text('aiSkillHint');
+            apiDocsAction.appendChild(hint);
+            queueMicrotask(() => this.showProfessionalOnboarding(project));
+        }
+        if (this._professionalApiReminderProjectId === project.id) {
+            this._professionalApiReminderProjectId = null;
+            queueMicrotask(() => this.toast(this.text('apiDocsReminder'), 'info'));
+        }
         this.appendFooter(page, [
-            this.button(this.text('apiDocs'), 'secondary', () => this.showApiDocs(), 'Book Text'),
+            apiDocsAction,
             this.button(this.text('preview'), 'secondary', () => this.previewProfessional(page, project), 'Eye'),
             this.button(this.text('saveDraft'), 'secondary', () => this.saveEditorProject(page, project, false), 'Save Floppy'),
             this.button(typeof I18n !== 'undefined' && I18n.currentLang === 'en' ? 'Next' : '下一步', 'primary', () => this.saveEditorProject(page, project, true), 'Arrow Right')
@@ -617,7 +649,7 @@ const DeveloperCenterApp = {
         const selected = new Set(Array.isArray(selectedPermissions) ? selectedPermissions : []);
         const allowed = new Set(Array.isArray(allowedPermissions) ? allowedPermissions : []);
         const english = typeof I18n !== 'undefined' && I18n.currentLang === 'en';
-        host.innerHTML = `<strong class="dc-permission-heading">${english ? 'Optional permissions' : '可选权限'}</strong><span class="dc-permission-help">${english ? 'Only select capabilities this App actually needs. The user must approve them after safety validation.' : '只选择 App 实际需要的能力；安全检查通过后仍需由用户确认授权。'}</span>`;
+        host.innerHTML = `<strong class="dc-permission-heading">${english ? 'Optional permissions' : '可选权限'}</strong><span class="dc-permission-help">${english ? 'Select only capabilities this App needs. Each capability remains unavailable until its first use, when Fluent asks the user once.' : '只选择 App 实际需要的能力；每项能力默认不可用，首次调用时 Fluent 才会单独向用户认证。'}</span>`;
         this.PERMISSIONS.filter((permission) => allowed.has(permission.id)).forEach((permission) => {
             const info = this.permissionInfo(permission.id);
             const label = document.createElement('label');
@@ -787,6 +819,60 @@ const DeveloperCenterApp = {
             component: 'DeveloperCenterApiDocsApp'
         };
         WindowManager.openApp('developer-center-api-docs');
+        this.notifyAiSkillSuggestion();
+    },
+
+    notifyAiSkillSuggestion() {
+        const now = Date.now();
+        if (now - this._lastAiSkillNotificationAt < 800) return;
+        this._lastAiSkillNotificationAt = now;
+        const title = this.text('apiDocs');
+        const message = this.text('apiDocsAiSkillNotice');
+        FluentUI.Toast({
+            title,
+            message,
+            type: 'info',
+            duration: 6500
+        });
+        State.addNotification({
+            title,
+            message,
+            type: 'info'
+        });
+    },
+
+    async showProfessionalOnboarding(project) {
+        if (!project?.id || this._professionalOnboardingProjectId !== project.id || this._professionalOnboardingDialogShown) return;
+        const onboarding = await DeveloperCenterStore.get('preferences', 'professional-app-api-onboarding-v1');
+        if (onboarding?.value === true) {
+            this._professionalOnboardingProjectId = null;
+            return;
+        }
+        this._professionalOnboardingDialogShown = true;
+        const english = typeof I18n !== 'undefined' && I18n.currentLang === 'en';
+        FluentUI.Dialog({
+            type: 'info',
+            title: english ? 'Read the API reference before building' : '构建前请先阅读 API 参考文档',
+            content: english
+                ? 'Professional Apps run in a secure sandbox. Please read the API reference before writing code to avoid using capabilities that Fluent cannot package.'
+                : '专业 App 会在安全沙箱中运行。请在编写代码前阅读 API 参考文档，避免使用 Fluent 无法封装的能力。',
+            closeOnOverlay: false,
+            buttons: [{ text: english ? 'OK' : '确定', variant: 'primary', value: true }],
+            onClose: async () => {
+                await DeveloperCenterStore.put('preferences', { key: 'professional-app-api-onboarding-v1', value: true });
+                this.showApiDocs();
+            }
+        });
+    },
+
+    downloadAiSkill() {
+        const link = document.createElement('a');
+        link.href = 'docs/fluent-app-builder/SKILL.md';
+        link.download = 'SKILL.md';
+        link.hidden = true;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
     },
 
     async startValidation(page, project, options = {}) {
@@ -1270,6 +1356,7 @@ const DeveloperCenterApp = {
             importedFromFap: project.importedFromFap === true,
             permissionConsentRequired: project.importedFromFap === true || project.permissionConsentRequired === true
         });
+        DeveloperCreatedRuntime.clearPermissionDecisions(app.id);
         DeveloperCreatedRuntime.register(app);
         if (addDesktop) Desktop.addAppShortcut(app.id);
         DeveloperCreatedRuntime.refreshShell();
@@ -1306,6 +1393,7 @@ const DeveloperCenterApp = {
             imported.projectId = imported.projectId || DeveloperCenterStore.createId('sealed-project');
         }
         const app = await DeveloperCenterStore.saveApp(imported);
+        DeveloperCreatedRuntime.clearPermissionDecisions(app.id);
         DeveloperCreatedRuntime.register(app);
         DeveloperCreatedRuntime.refreshShell();
         this.toast(this.text('importSuccess'));
@@ -1913,6 +2001,7 @@ const DeveloperCenterApiDocsApp = {
         };
         document.addEventListener('keydown', this._selectionKeyHandler);
         this.render();
+        DeveloperCenterApp.notifyAiSkillSuggestion();
         State.on('languageChange', () => this.render(), { key: 'DeveloperCenterApiDocsApp.language' });
         return true;
     },
@@ -1924,7 +2013,12 @@ const DeveloperCenterApiDocsApp = {
         const subtitle = english ? 'FluentOS APIs available to sandboxed professional Apps.' : '专业 App 在沙箱中可使用的 FluentOS API。';
         const titleElement = document.getElementById(this.windowId)?.querySelector('.window-title');
         if (titleElement) titleElement.textContent = title;
-        this.container.innerHTML = `<main class="dc-api-window-page"><header class="dc-heading"><div><h1>${DeveloperCenterApp.esc(title)}</h1><p>${DeveloperCenterApp.esc(subtitle)}</p></div></header>${DeveloperCenterApp.apiDocsContent()}</main>`;
+        const downloadButton = DeveloperCenterApp.button(DeveloperCenterApp.text('downloadAiSkill'), 'primary', () => DeveloperCenterApp.downloadAiSkill(), 'Download');
+        const page = document.createElement('main');
+        page.className = 'dc-api-window-page';
+        page.appendChild(DeveloperCenterApp.heading(title, subtitle, downloadButton));
+        page.insertAdjacentHTML('beforeend', DeveloperCenterApp.apiDocsContent());
+        this.container.replaceChildren(page);
         DeveloperCenterApp.bindApiDocs(this.container);
     },
 

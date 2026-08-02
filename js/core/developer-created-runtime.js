@@ -14,7 +14,8 @@ const DeveloperCreatedRuntime = {
     ]),
     _bound: false,
     _permissionState: null,
-    _permissionLaunches: new Map(),
+    _permissionRequests: new Map(),
+    _permissionRequestChains: new Map(),
 
     init() {
         if (this._bound) return;
@@ -134,10 +135,6 @@ const DeveloperCreatedRuntime = {
             .filter((permission) => DeveloperCenterStore.SUPPORTED_PERMISSIONS.includes(permission));
     },
 
-    _requiresPermissionConsent(app) {
-        return app?.permissionConsentRequired === true || app?.importedFromFap === true || !!String(app?.sourcePackageId || '').trim();
-    },
-
     _readPermissionState() {
         if (this._permissionState) return this._permissionState;
         let value = {};
@@ -180,46 +177,58 @@ const DeveloperCreatedRuntime = {
     },
 
     _grantedPermissions(app, declaredPermissions = this._declaredPermissions(app)) {
-        if (!this._requiresPermissionConsent(app)) return [...declaredPermissions];
         return declaredPermissions.filter((permission) => this.getPermissionDecision(app.id, permission) === 'granted');
     },
 
-    _pendingPermissions(app) {
-        if (!this._requiresPermissionConsent(app)) return [];
-        return this._declaredPermissions(app).filter((permission) => !this.getPermissionDecision(app.id, permission));
+    interceptLaunch() {
+        // Installed Apps always open immediately. Professional App permissions
+        // are authenticated lazily by _ensurePermission at the first API call.
+        return false;
     },
 
-    interceptLaunch(appId, data = null) {
-        const app = this.apps.get(appId);
-        const pending = app ? this._pendingPermissions(app) : [];
-        if (!app || pending.length === 0) return false;
-        if (this._permissionLaunches.has(appId)) return true;
-        const launch = this._requestPermissionsSequentially(app, pending)
-            .catch((error) => {
-                console.warn('[CreatedApp] Permission request failed; unresolved permissions were denied', error);
-                pending.forEach((permission) => {
-                    if (!this.getPermissionDecision(app.id, permission)) this.setPermissionDecision(app.id, permission, 'denied');
-                });
-            })
-            .finally(() => this._permissionLaunches.delete(appId));
-        this._permissionLaunches.set(appId, launch);
-        launch.then(() => {
-            if (!this.apps.has(appId) || typeof WindowManager === 'undefined') return;
-            if (app.type === 'pwa') this._registerPwa(app);
-            WindowManager.openApp(appId, data);
+    async _ensurePermission(registration, permission) {
+        const profile = registration?.profile;
+        const info = DeveloperCenterStore.permissionInfo(permission, 'en');
+        if (!profile?.declaredPermissions.includes(permission)) throw new Error(`Permission is not declared: ${info.name}`);
+        const current = this.getPermissionDecision(profile.id, permission);
+        if (current === 'granted') return true;
+        if (current === 'denied') throw new Error(`Permission was denied: ${info.name}`);
+
+        const requestKey = `${profile.id}:${permission}`;
+        if (this._permissionRequests.has(requestKey)) {
+            const sharedDecision = await this._permissionRequests.get(requestKey);
+            if (sharedDecision === 'granted') return true;
+            throw new Error(`Permission was denied: ${info.name}`);
+        }
+
+        const app = this.apps.get(profile.id) || {
+            id: profile.id,
+            name: profile.name,
+            title: profile.title,
+            network: profile.network
+        };
+        const previous = this._permissionRequestChains.get(profile.id) || Promise.resolve();
+        const request = previous.catch(() => {}).then(async () => {
+            const latest = this.getPermissionDecision(profile.id, permission);
+            if (latest) return latest;
+            WindowManager.focusWindow?.(registration.windowId);
+            const decision = await this._showPermissionDialog(app, permission);
+            this.setPermissionDecision(profile.id, permission, decision);
+            return decision;
         });
-        return true;
-    },
-
-    async _requestPermissionsSequentially(app, permissions) {
-        for (let index = 0; index < permissions.length; index += 1) {
-            const permission = permissions[index];
-            const decision = await this._showPermissionDialog(app, permission, index + 1, permissions.length);
-            this.setPermissionDecision(app.id, permission, decision);
+        this._permissionRequests.set(requestKey, request);
+        this._permissionRequestChains.set(profile.id, request);
+        try {
+            const decision = await request;
+            if (decision === 'granted') return true;
+            throw new Error(`Permission was denied: ${info.name}`);
+        } finally {
+            if (this._permissionRequests.get(requestKey) === request) this._permissionRequests.delete(requestKey);
+            if (this._permissionRequestChains.get(profile.id) === request) this._permissionRequestChains.delete(profile.id);
         }
     },
 
-    _showPermissionDialog(app, permission, position, total) {
+    _showPermissionDialog(app, permission) {
         const english = typeof I18n !== 'undefined' && I18n.currentLang === 'en';
         const info = DeveloperCenterStore.permissionInfo(permission, english ? 'en' : 'zh');
         const network = (() => {
@@ -231,7 +240,7 @@ const DeveloperCreatedRuntime = {
             ? `<div class="app-permission-domains"><strong>${english ? 'Allowed sites' : '允许访问的网站'}</strong><span>${domains.map((domain) => this.escapeHtml(domain)).join('<br>')}</span></div>`
             : '';
         const appName = String(app.name || app.title || 'App');
-        const content = `<div class="app-permission-dialog"><p>${this.escapeHtml(info.description)}</p>${domainHtml}<small>${english ? `Permission ${position} of ${total}. You can still use the App if you deny it; only this feature will be unavailable.` : `权限 ${position}/${total}。拒绝后仍可使用此 App，但此项功能将不可用。`}</small></div>`;
+        const content = `<div class="app-permission-dialog"><p>${this.escapeHtml(info.description)}</p>${domainHtml}<small>${english ? 'Fluent will remember this choice. If denied, this feature stays unavailable while the rest of the App can continue to work.' : 'Fluent 会记住本次选择。拒绝后此项功能将持续不可用，App 的其他功能仍可继续使用。'}</small></div>`;
         if (typeof FluentUI === 'undefined' || typeof FluentUI.Dialog !== 'function') return Promise.resolve('denied');
         return new Promise((resolve) => FluentUI.Dialog({
             type: 'info',
@@ -709,11 +718,7 @@ const DeveloperCreatedRuntime = {
         if (profile.readOnly && !this.READONLY_METHODS.includes(method)) {
             throw new Error('This validation session permits read-only FluentOS APIs only');
         }
-        const requirePermission = (permission) => {
-            const info = DeveloperCenterStore.permissionInfo(permission, 'en');
-            if (!profile.declaredPermissions.includes(permission)) throw new Error(`Permission is not declared: ${info.name}`);
-            if (!profile.permissions.includes(permission)) throw new Error(`Permission was denied: ${info.name}`);
-        };
+        const requirePermission = (permission) => this._ensurePermission(registration, permission);
         const key = (value) => {
             const output = String(value ?? '').trim();
             if (!output || output.length > 80 || !/^[\w.-]+$/.test(output)) throw new Error('Invalid storage key');
@@ -817,10 +822,10 @@ const DeveloperCreatedRuntime = {
             case 'system.language': return this.getHostState().language;
             case 'system.windowBlurEnabled': return this.getHostState(registration.windowId).windowBlurEnabled;
             case 'storage.get':
-                requirePermission('storage.local');
+                await requirePermission('storage.local');
                 return JSON.parse(localStorage.getItem(`${storagePrefix}${key(args.key)}`) || 'null');
             case 'storage.set': {
-                requirePermission('storage.local');
+                await requirePermission('storage.local');
                 if (args.value === undefined) throw new Error('Storage value cannot be undefined');
                 const serialized = JSON.stringify(args.value);
                 if (serialized === undefined) throw new Error('Storage value is not JSON-serializable');
@@ -837,7 +842,7 @@ const DeveloperCreatedRuntime = {
                 return true;
             }
             case 'storage.remove':
-                requirePermission('storage.local');
+                await requirePermission('storage.local');
                 localStorage.removeItem(`${storagePrefix}${key(args.key)}`);
                 return true;
             case 'shell.openApp': {
@@ -852,29 +857,29 @@ const DeveloperCreatedRuntime = {
                 window.open(url.href, '_blank', 'noopener,noreferrer'); return true;
             }
             case 'clipboard.read':
-                requirePermission('clipboard.read');
+                await requirePermission('clipboard.read');
                 return navigator.clipboard?.readText ? navigator.clipboard.readText() : Promise.reject(new Error('Clipboard is unavailable'));
             case 'clipboard.write':
-                requirePermission('clipboard.write');
+                await requirePermission('clipboard.write');
                 return navigator.clipboard?.writeText ? navigator.clipboard.writeText(String(args.text ?? '').slice(0, 100000)).then(() => true) : Promise.reject(new Error('Clipboard is unavailable'));
             case 'window.info': {
                 const win = WindowManager.windows.find((item) => item.id === registration.windowId);
                 return { appId: profile.id, title: profile.title, maximized: win?.isMaximized === true, width: win?.element?.offsetWidth || 0, height: win?.element?.offsetHeight || 0 };
             }
             case 'system.setTheme': {
-                requirePermission('system.theme.write');
+                await requirePermission('system.theme.write');
                 const mode = String(args.mode || '');
                 if (!['light', 'dark', 'auto'].includes(mode)) throw new Error('Theme must be light, dark, or auto');
                 State.updateSettings({ theme: mode });
                 return this.getHostState(registration.windowId);
             }
             case 'system.toggleTheme': {
-                requirePermission('system.theme.write');
+                await requirePermission('system.theme.write');
                 State.updateSettings({ theme: document.body.classList.contains('dark-mode') ? 'light' : 'dark' });
                 return this.getHostState(registration.windowId);
             }
             case 'window.setTitle': {
-                requirePermission('window.manage');
+                await requirePermission('window.manage');
                 const title = String(args.title || '').trim().slice(0, 80);
                 if (!title) throw new Error('Window title cannot be empty');
                 const win = WindowManager.windows.find((item) => item.id === registration.windowId);
@@ -884,7 +889,7 @@ const DeveloperCreatedRuntime = {
                 return true;
             }
             case 'window.setSize': {
-                requirePermission('window.manage');
+                await requirePermission('window.manage');
                 const win = WindowManager.windows.find((item) => item.id === registration.windowId);
                 if (!win?.element || win.isMaximized) throw new Error('The window cannot be resized while maximized');
                 const width = Math.max(420, Math.min(Number(args.width) || 0, Math.max(420, window.innerWidth - 24)));
@@ -896,7 +901,7 @@ const DeveloperCreatedRuntime = {
                 return { width: Math.round(width), height: Math.round(height) };
             }
             case 'files.readText': {
-                requirePermission('files.readText');
+                await requirePermission('files.readText');
                 const node = State.findNode(String(args.id || ''));
                 if (!node || node.type !== 'file' || typeof node.content !== 'string') throw new Error('Text file was not found');
                 if (!isInUserTextFolder(node)) throw new Error('The file is outside the allowed user folders');
@@ -905,7 +910,7 @@ const DeveloperCreatedRuntime = {
                 return { id: node.id, name: node.name, content: node.content, modified: node.modified || null };
             }
             case 'files.listText': {
-                requirePermission('files.readText');
+                await requirePermission('files.readText');
                 const folderId = String(args.folder || 'documents');
                 if (!['documents', 'downloads', 'desktop'].includes(folderId)) throw new Error('Only Documents, Downloads, and Desktop can be listed');
                 const folder = State.findNode(folderId);
@@ -916,7 +921,7 @@ const DeveloperCreatedRuntime = {
                     .map((node) => ({ id: node.id, name: node.name, size: Number(node.size) || new TextEncoder().encode(node.content).length, modified: node.modified || null }));
             }
             case 'files.writeText': {
-                requirePermission('files.writeText');
+                await requirePermission('files.writeText');
                 const node = State.findNode(String(args.id || ''));
                 if (!node || node.type !== 'file' || typeof node.content !== 'string') throw new Error('Text file was not found');
                 if (!isInUserTextFolder(node)) throw new Error('The file is outside the allowed user folders');
@@ -931,7 +936,7 @@ const DeveloperCreatedRuntime = {
                 return true;
             }
             case 'files.createText': {
-                requirePermission('files.writeText');
+                await requirePermission('files.writeText');
                 const name = String(args.name || '').trim();
                 if (!name || name.length > 120 || !/\.(?:txt|md|json|html|css|js)$/i.test(name) || /[\\/:*?"<>|\x00-\x1f]/.test(name)) {
                     throw new Error('Use a safe text filename with a supported extension');
@@ -950,17 +955,17 @@ const DeveloperCreatedRuntime = {
                 return { id: node.id, name: node.name };
             }
             case 'desktop.addShortcut':
-                requirePermission('desktop.manage');
+                await requirePermission('desktop.manage');
                 return Desktop.addAppShortcut(profile.id);
             case 'desktop.removeShortcut':
-                requirePermission('desktop.manage');
+                await requirePermission('desktop.manage');
                 Desktop.removeAppShortcut(profile.id);
                 return true;
             case 'network.request':
-                requirePermission('network.request');
+                await requirePermission('network.request');
                 return this._networkRequest(profile, args);
             case 'network.loadImage':
-                requirePermission('network.image');
+                await requirePermission('network.image');
                 return this._networkImage(profile, args);
             default: throw new Error('API is not permitted');
         }

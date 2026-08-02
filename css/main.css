@@ -1775,6 +1775,8 @@ body.button-glow-disabled .taskbar-app.taskbar-app-minimized::after {
     padding-right: 4px;
     padding-bottom: 72px;
     overscroll-behavior: contain;
+    touch-action: pan-y pinch-zoom;
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     scrollbar-color: transparent transparent;
 }
@@ -2939,6 +2941,32 @@ body.desktop-unblur .desktop-wallpaper {
     transform: scale(1);
     transition: filter 680ms cubic-bezier(0.16, 1, 0.3, 1),
                 transform 680ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.start-app.touch-drag-armed {
+    background: rgba(var(--accent-rgb, 0, 120, 212), 0.16) !important;
+    box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb, 0, 120, 212), 0.42);
+}
+
+/* 触控设备使用浏览器原生合成滚动，避免逐帧脚本滚动造成卡顿。 */
+.fluent-native-touch-scroll {
+    touch-action: pan-y pinch-zoom;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    scroll-behavior: auto !important;
+}
+
+.fluent-native-touch-scroll.fluent-native-touch-scroll-xy {
+    touch-action: pan-x pan-y pinch-zoom;
+}
+
+.touch-input-supported,
+.touch-input-supported body {
+    -webkit-touch-callout: none;
+}
+
+.touch-input-supported .notes-app {
+    -webkit-touch-callout: default;
 }
 
 body.desktop-unblur .desktop-icons {

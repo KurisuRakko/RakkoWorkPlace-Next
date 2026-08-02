@@ -254,6 +254,7 @@ const AppInstallerApp = {
             next.projectId = packageProjectId;
         }
         const app = await DeveloperCenterStore.saveApp(next);
+        DeveloperCreatedRuntime.clearPermissionDecisions(app.id);
         DeveloperCreatedRuntime.register(app);
         DeveloperCreatedRuntime.refreshShell();
         return app;

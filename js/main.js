@@ -1248,6 +1248,170 @@ window.addEventListener('error', (e) => {
 /**
  * 全局禁用右键菜单和文字复制（记事本除外）
  */
+const TouchInputSupport = {
+    LONG_PRESS_MS: 1000,
+    MOVE_TOLERANCE_PX: 12,
+    _activePress: null,
+    _lastTouchActivityAt: 0,
+    _nativeContextSuppressedUntil: 0,
+    _clickSuppressedUntil: 0,
+    _clickSuppressedTarget: null,
+    _pendingScrollRoots: new Set(),
+    _scrollScanRaf: 0,
+    _observer: null,
+
+    init() {
+        if (this._initialized) return;
+        this._initialized = true;
+
+        document.addEventListener('pointerdown', (event) => this._onPointerDown(event), { capture: true, passive: true });
+        document.addEventListener('pointermove', (event) => this._onPointerMove(event), { capture: true, passive: true });
+        document.addEventListener('pointerup', (event) => this._finishPointer(event), true);
+        document.addEventListener('pointercancel', (event) => this._finishPointer(event), true);
+        document.addEventListener('contextmenu', (event) => this._filterNativeTouchContextMenu(event), true);
+        document.addEventListener('click', (event) => this._filterPostLongPressClick(event), true);
+
+        if (!this._hasTouchInput()) return;
+        document.documentElement.classList.add('touch-input-supported');
+        this._queueScrollScan(document.body);
+        this._observer = new MutationObserver((records) => {
+            records.forEach((record) => {
+                record.addedNodes.forEach((node) => {
+                    if (node instanceof Element) this._queueScrollScan(node);
+                });
+            });
+        });
+        this._observer.observe(document.body, { childList: true, subtree: true });
+    },
+
+    _hasTouchInput() {
+        return Number(navigator.maxTouchPoints || 0) > 0 || window.matchMedia?.('(any-pointer: coarse)').matches === true;
+    },
+
+    _isTouchPointer(event) {
+        return event.pointerType === 'touch';
+    },
+
+    _cancelActivePress() {
+        if (!this._activePress) return;
+        clearTimeout(this._activePress.timer);
+        this._activePress = null;
+    },
+
+    _onPointerDown(event) {
+        if (!this._isTouchPointer(event) || event.isPrimary === false || (typeof event.button === 'number' && event.button !== 0)) return;
+        this._lastTouchActivityAt = performance.now();
+        this._cancelActivePress();
+        const target = event.target instanceof Element ? event.target : null;
+        if (!target || target.closest([
+            '.start-app',
+            '.notes-app',
+            '[data-touch-long-press="off"]',
+            '.window-resize-handle',
+            '.fw-scrollbar-rail',
+            '.fluent-scroll-rail',
+            '.fluent-scroll-thumb'
+        ].join(','))) return;
+
+        const press = {
+            pointerId: event.pointerId,
+            target,
+            clientX: event.clientX,
+            clientY: event.clientY,
+            fired: false,
+            timer: 0
+        };
+        press.timer = setTimeout(() => this._fireLongPressContextMenu(press), this.LONG_PRESS_MS);
+        this._activePress = press;
+    },
+
+    _onPointerMove(event) {
+        if (this._isTouchPointer(event)) this._lastTouchActivityAt = performance.now();
+        const press = this._activePress;
+        if (!press || event.pointerId !== press.pointerId || press.fired) return;
+        const distance = Math.hypot(event.clientX - press.clientX, event.clientY - press.clientY);
+        if (distance > this.MOVE_TOLERANCE_PX) this._cancelActivePress();
+    },
+
+    _finishPointer(event) {
+        if (this._isTouchPointer(event)) this._lastTouchActivityAt = performance.now();
+        if (!this._activePress || event.pointerId !== this._activePress.pointerId) return;
+        this._cancelActivePress();
+    },
+
+    _fireLongPressContextMenu(press) {
+        if (this._activePress !== press || !press.target.isConnected) return;
+        press.fired = true;
+        const now = performance.now();
+        this._nativeContextSuppressedUntil = now + 1400;
+        this._clickSuppressedUntil = now + 900;
+        this._clickSuppressedTarget = press.target;
+        try { navigator.vibrate?.(18); } catch (_) {}
+
+        const contextEvent = new MouseEvent('contextmenu', {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            view: window,
+            clientX: press.clientX,
+            clientY: press.clientY,
+            button: 2,
+            buttons: 0
+        });
+        Object.defineProperty(contextEvent, 'fluentLongPress', { value: true });
+        press.target.dispatchEvent(contextEvent);
+    },
+
+    _filterNativeTouchContextMenu(event) {
+        if (event.fluentLongPress === true) return;
+        const target = event.target instanceof Element ? event.target : null;
+        if (target?.closest('.notes-app')) return;
+        const now = performance.now();
+        const isNativeTouchContext = event.pointerType === 'touch' || this._activePress ||
+            now < this._nativeContextSuppressedUntil ||
+            (this._lastTouchActivityAt > 0 && now - this._lastTouchActivityAt < 1600);
+        if (!isNativeTouchContext) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    },
+
+    _filterPostLongPressClick(event) {
+        if (performance.now() >= this._clickSuppressedUntil || !this._clickSuppressedTarget) return;
+        const target = event.target instanceof Element ? event.target : null;
+        const heldTarget = this._clickSuppressedTarget;
+        if (!target || (target !== heldTarget && !heldTarget.contains(target) && !target.contains(heldTarget))) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    },
+
+    _queueScrollScan(root) {
+        if (!(root instanceof Element)) return;
+        this._pendingScrollRoots.add(root);
+        if (this._scrollScanRaf) return;
+        this._scrollScanRaf = requestAnimationFrame(() => {
+            this._scrollScanRaf = 0;
+            const roots = Array.from(this._pendingScrollRoots);
+            this._pendingScrollRoots.clear();
+            roots.forEach((item) => this._enhanceScrollTree(item));
+        });
+    },
+
+    _enhanceScrollTree(root) {
+        const candidates = [root, ...root.querySelectorAll('div, main, section, aside, nav, ul, ol, pre, textarea')];
+        candidates.forEach((element) => {
+            if (!(element instanceof HTMLElement)) return;
+            const style = getComputedStyle(element);
+            const vertical = ['auto', 'scroll', 'overlay'].includes(style.overflowY);
+            const horizontal = ['auto', 'scroll', 'overlay'].includes(style.overflowX);
+            if (!vertical && !horizontal) return;
+            element.classList.add('fluent-native-touch-scroll');
+            element.classList.toggle('fluent-native-touch-scroll-xy', horizontal);
+        });
+    }
+};
+
+TouchInputSupport.init();
+
 window.closeAllContextMenus = (except = null) => {
     document.querySelectorAll('.context-menu, .fluent-context-menu').forEach((menu) => {
         if (menu === except || (except && menu.contains(except))) return;
@@ -1667,7 +1831,7 @@ const ResourceMonitor = {
 };
 
 window.FluentOS = {
-    version: globalThis.FluentOSResourceManifest?.systemVersion || '2.4.260723B',
+    version: globalThis.FluentOSResourceManifest?.systemVersion || '2.5.260802',
     State,
     Storage,
     notify,

@@ -95,6 +95,8 @@ body:not(.dark-mode) .dc-token-function { color: #795e26; }
 .dc-toggle-copy span { display: block; margin-top: 3px; color: var(--text-secondary); font-size: 11px; line-height: 1.4; }
 .dc-action-footer { position: absolute; z-index: 8; inset: auto 0 0; display: flex; align-items: flex-end; justify-content: flex-end; gap: 9px; height: 122px; padding: 0 28px 14px; box-sizing: border-box; pointer-events: none; background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--bg-primary) 82%, transparent) 38%, var(--bg-primary) 68%); }
 .dc-action-footer > * { pointer-events: auto; }
+.dc-api-action { display: grid; justify-items: start; gap: 5px; max-width: 310px; }
+.dc-api-action small { color: var(--text-secondary); font-size: 10px; line-height: 1.35; }
 .dc-validation-list { display: grid; gap: 9px; max-width: 720px; margin-top: 20px; }
 .dc-validation-item { overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--bg-secondary) !important; transition: border-color .2s ease, box-shadow .2s ease; }
 .dc-validation-item.is-pass { border-color: color-mix(in srgb, #107c10 34%, var(--border-color)); }
@@ -146,6 +148,7 @@ body:not(.dark-mode) .dc-token-function { color: #795e26; }
 .dc-api-window-page { box-sizing: border-box; height: 100%; padding: 28px 30px 40px; overflow: auto; overscroll-behavior: contain; }
 .dc-api-window-content, .dc-api-window-page, .dc-api-window-page * { cursor: text; user-select: text !important; -webkit-user-select: text !important; -moz-user-select: text !important; -ms-user-select: text !important; }
 .dc-api-window-page button, .dc-api-window-page button * { cursor: pointer; user-select: none !important; -webkit-user-select: none !important; -moz-user-select: none !important; -ms-user-select: none !important; }
+.dc-api-window-page > .dc-heading { align-items: flex-start; }
 .dc-api-row { position: relative; padding: 12px 70px 12px 12px; border-radius: var(--radius-md); background: var(--bg-tertiary); }
 .dc-api-row.dc-api-privileged { border: 1px solid color-mix(in srgb, #f2c811 55%, var(--border-color)); }
 .dc-api-row code { display: block; margin-bottom: 5px; color: var(--accent); font-size: 12px; }

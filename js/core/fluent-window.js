@@ -164,6 +164,11 @@ const FluentWindow = {
 
             if (scrollable.classList.contains('fw-card')) {
                 const page = scrollable.querySelector(':scope > .fw-page');
+                if (page?.querySelector(':scope > [data-fw-scroll-bounce-fixed]')) {
+                    return Array.from(page.children)
+                        .filter((el) => el instanceof HTMLElement)
+                        .filter((el) => !el.hasAttribute('data-fw-scroll-bounce-fixed'));
+                }
                 return normalizeTargets(page ? [page] : collectTopLevelTargets(scrollable), scrollable);
             }
 
@@ -511,6 +516,7 @@ const FluentWindow = {
      * @param {Array}  options.items            - 导航项 [{ id, label, icon, badge? }]
      * @param {string} options.activeId         - 初始激活项 id
      * @param {Function} options.onNavigate     - (id, pageEl) => void 渲染页面回调
+     * @param {Function} [options.getNavActiveId] - (id, instance) => string 将二级路由映射到父导航项
      * @param {Array}  [options.footerItems]    - 底部固定导航项 (如设置/账户)
      * @param {boolean} [options.preserveScrollPositions] - 是否按页面保留右侧卡片滚动位置
      * @param {Function} [options.getScrollKey] - (id, instance) => string 自定义滚动位置 key
@@ -681,6 +687,12 @@ const FluentWindow = {
             _sidebarSearchResults: [],
             _sidebarSearchTimer: null,
             _sidebarSearchSeq: 0
+        };
+
+        const getNavActiveId = () => {
+            if (typeof opts.getNavActiveId !== 'function') return instance.activeId;
+            const resolvedId = opts.getNavActiveId(instance.activeId, instance);
+            return resolvedId == null ? instance.activeId : resolvedId;
         };
 
         const setSidebarSearchPanelVisible = (visible) => {
@@ -923,7 +935,7 @@ const FluentWindow = {
                 btn.type = 'button';
                 btn.dataset.id = item.id;
                 btn.title = item.label || '';
-                const isActive = item.id === instance.activeId;
+                const isActive = item.id === getNavActiveId();
                 if (isActive) btn.classList.add('active');
 
                 const iconWrap = document.createElement('span');
@@ -965,8 +977,9 @@ const FluentWindow = {
 
         // ---------- 高亮同步 ----------
         const syncActiveStyles = () => {
+            const navActiveId = getNavActiveId();
             frame.querySelectorAll('.fw-nav-item').forEach(btn => {
-                const isActive = btn.dataset.id === instance.activeId;
+                const isActive = btn.dataset.id === navActiveId;
                 btn.classList.toggle('active', isActive);
                 const fallbackImg = btn.querySelector('.fw-nav-icon-img');
                 if (fallbackImg && fallbackImg.dataset.iconName) {

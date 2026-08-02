@@ -1268,7 +1268,7 @@ body.fluent-v2 .settings-content *:not(.fluent-setting-item):not(.settings-recom
 }
 
 /* 修复V2模式下可能出现的白色色块 */
-body.fluent-v2 .settings-content > div:not(.settings-section):not(.settings-overview-header) {
+body.fluent-v2 .settings-content > div:not(.settings-section):not(.settings-overview-header):not(.settings-secondary-topbar) {
     background: transparent !important;
 }
 

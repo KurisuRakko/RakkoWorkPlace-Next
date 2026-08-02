@@ -11,8 +11,11 @@ const SettingsApp = {
     _developerModeVisible: false,
     // 与当前仓库 git log 同步；同一天的提交共同组成一个日期版本。
     aboutChangelog: [
+        { date: '2026-08-02', version: '2.5.260802', commits: [
+            { hash: 'local', title: '本次更新完善了开发者中心自建 App 功能，新增 AI Skill 下载、三问式需求澄清、中英文自动适配、API 文档首次引导及打开提醒；权限改为安装后按需认证并记忆允许或拒绝结果；统一修复设置二级页面的返回按钮、羽化栏、弹性滚动和侧边栏高亮；同时加入全局触控优化，支持流畅手势滚动、长按呼出右键菜单，以及开始菜单长按 1 秒后才可拖动 App。' }
+        ] },
         { date: '2026-07-23', version: '2.4.260723B', commits: [
-            { hash: 'local', title: '修复照片 App 设置锁屏壁纸不能立即生效。修复开启自动识别壁纸主题色后，更换壁纸不会立即重新识别并应用主题色的BUG。优化锁屏密码进入桌面的动画。App Shop 搜索页图标和文字跟随系统主题色。完善第三方 PWA 存储统计和卸载。存储未知的应用排在列表底部，并显示“未知”。设置 App 每次打开时只刷新一次存储数据。完善系统存储统计分类。引入动态导入容量：默认显示 1GB。导入文件超过 1GB 后扩展至 5GB。超过 5GB 后扩展至最高 10GB。新导入会导致总量超过 10GB 时阻止导入并提醒清理。文件 App 新增“音乐”文件夹：多媒体 App 导入的音乐自动出现在其中。修复了开始菜单文件名过长的显示异常问题。修复移动文件的时候会同时触发文件导入的BUG。修复了文件App内文件名过长的显示BUG。' }
+            { hash: 'df647e5', title: '修复照片 App 设置锁屏壁纸不能立即生效。修复开启自动识别壁纸主题色后，更换壁纸不会立即重新识别并应用主题色的BUG。优化锁屏密码进入桌面的动画。App Shop 搜索页图标和文字跟随系统主题色。完善第三方 PWA 存储统计和卸载。存储未知的应用排在列表底部，并显示“未知”。设置 App 每次打开时只刷新一次存储数据。完善系统存储统计分类。引入动态导入容量：默认显示 1GB。导入文件超过 1GB 后扩展至 5GB。超过 5GB 后扩展至最高 10GB。新导入会导致总量超过 10GB 时阻止导入并提醒清理。文件 App 新增“音乐”文件夹：多媒体 App 导入的音乐自动出现在其中。修复了开始菜单文件名过长的显示异常问题。修复移动文件的时候会同时触发文件导入的BUG。修复了文件App内文件名过长的显示BUG。' }
         ] },
         { date: '2026-07-22', version: '2.4.260722A', commits: [
             { hash: '2198bd8', title: '完成了FluentOS青山湖阶段性重要功能更新，优化了系统响应速度和稳定性。修复照片、天气 App 的细节问题。调整了 Fluent App 安装器以及开发者中心安装包导入、源码查看和解包权限与逻辑。文件上传功能移至隐私设置并默认开启；大幅度整改实验室选项，移除弹窗与通知 Demo，新增跨 App 拖放和智能多开 App 窗口；特别注意“灵翼交互”即将下线，若有需要，请及时下载当前源码。新增系统交互音效，完善开机、关机、重启、通知与弹窗音效。优化小组件抽屉中锁屏与桌面之间可连续打断的非线性景深动画，并修复图标、文件拖动误触发上传的问题。统一控制中心滑块和悬停高光，修复通知中心布局、滚动、居中显示及单条通知模糊淡出、平滑补位。优化了 Fingo 对话卡片的进退场动画，同时保证背景模糊同步。改进了云母效果，现在云母效果可以正常显示。调整了个性化高级页面设置的实时预览窗，视觉更加协调，同时支持背景滚动以查看效果。修复开机加载圈动画卡顿的问题。' }
@@ -296,6 +299,28 @@ const SettingsApp = {
         }
     },
 
+    getNavActivePageId(pageId = this.currentPage) {
+        return {
+            'personalization-advanced': 'personalization',
+            'app-detail': 'applications',
+            'about-changelog': 'about'
+        }[pageId] || pageId;
+    },
+
+    createSecondaryBackBar(label, onBack) {
+        const bar = document.createElement('div');
+        bar.className = 'settings-secondary-topbar';
+        bar.setAttribute('data-fw-scroll-bounce-fixed', '');
+        bar.appendChild(FluentUI.Button({
+            text: label,
+            icon: 'Arrow Left',
+            variant: 'secondary',
+            className: 'settings-secondary-back-button',
+            onClick: onBack
+        }));
+        return bar;
+    },
+
     refreshCurrentPage(options = {}) {
         if (!this.frame || typeof this.frame.refresh !== 'function') {
             this.render();
@@ -379,6 +404,7 @@ const SettingsApp = {
             container: this.container,
             items: this.getPages().map(p => ({ id: p.id, label: t(p.label), icon: p.icon })),
             activeId: this.currentPage,
+            getNavActiveId: (pageId) => this.getNavActivePageId(pageId),
             preserveScrollPositions: true,
             getScrollKey: (pageId) => {
                 if (pageId === 'app-detail') {
@@ -424,8 +450,8 @@ const SettingsApp = {
         style.id = 'settings-app-styles';
         style.textContent = `
             .settings-app { display: flex; height: 100%; min-height: 0; overflow: hidden; }
-            .settings-content { flex: 1; overflow-y: auto; padding: 32px; min-height: 100%; box-sizing: border-box; }
-            .settings-section { margin-bottom: 32px; }
+            .settings-content { flex: 1; overflow-y: auto; padding: 40px; min-height: 100%; box-sizing: border-box; }
+            .settings-section { margin-bottom: 40px; }
             .settings-section-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
             .settings-appearance-section > .fluent-setting-item,
             .settings-appearance-section > .settings-accent-panel {
@@ -509,7 +535,7 @@ const SettingsApp = {
                 margin-top: 20px;
             }
             .settings-accent-group-title {
-                margin-bottom: 10px;
+                margin-bottom: 20px;
                 font-size: 14px;
                 color: var(--text-primary);
             }
@@ -854,7 +880,7 @@ const SettingsApp = {
             }
 
             body.fluent-v2.window-blur-disabled .settings-section,
-            body.fluent-v2.window-blur-disabled .settings-content > div:not(.fluent-setting-item):not(.settings-recommend-item):not(.settings-recent-item):not(.network-hero-card):not(.network-option-item):not(.network-expand-panel):not(.wallpaper-item):not(.settings-overview-wallpaper),
+            body.fluent-v2.window-blur-disabled .settings-content > div:not(.fluent-setting-item):not(.settings-recommend-item):not(.settings-recent-item):not(.network-hero-card):not(.network-option-item):not(.network-expand-panel):not(.wallpaper-item):not(.settings-overview-wallpaper):not(.settings-secondary-topbar),
             body.fluent-v2.window-blur-disabled .wallpaper-grid {
                 background: transparent !important;
                 background-color: transparent !important;
@@ -1303,51 +1329,66 @@ const SettingsApp = {
                 border-color: var(--fluent-card-border-dark, rgba(255, 255, 255, 0.1)) !important;
             }
             
-            .app-detail-back {
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-                padding: 8px 16px 8px 12px;
-                margin-bottom: 20px;
-                cursor: pointer;
-                color: var(--accent);
-                font-size: 13px;
-                font-weight: 500;
-                border-radius: 20px;
-                background: rgba(255, 255, 255, 0.7);
-                backdrop-filter: blur(10px);
-                -webkit-backdrop-filter: blur(10px);
-                transition: all 0.15s ease;
-                border: 1px solid rgba(255, 255, 255, 0.5);
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            .settings-content.settings-secondary-page {
+                overflow: visible;
             }
-            
-            .app-detail-back:hover {
-                background: rgba(255, 255, 255, 0.9);
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+
+            .settings-secondary-topbar {
+                --settings-secondary-bar-solid: #fff;
+                --settings-secondary-bar-90: rgba(255, 255, 255, .9);
+                --settings-secondary-bar-45: rgba(255, 255, 255, .45);
+                position: sticky;
+                top: 0;
+                z-index: 30;
+                display: flex;
+                align-items: flex-start;
+                min-height: 92px;
+                margin: -32px -32px -4px;
+                padding: 32px 32px 12px;
+                box-sizing: border-box;
+                overflow: visible;
+                pointer-events: none;
+                background-color: transparent !important;
+                background-image: none !important;
             }
-            
-            .app-detail-back:active {
-                transform: scale(0.98);
+
+            .dark-mode .settings-secondary-topbar {
+                --settings-secondary-bar-solid: #000;
+                --settings-secondary-bar-90: rgba(0, 0, 0, .9);
+                --settings-secondary-bar-45: rgba(0, 0, 0, .45);
             }
-            
-            .app-detail-back img {
-                width: 14px;
-                height: 14px;
+
+            .settings-secondary-topbar::before {
+                content: '';
+                position: absolute;
+                inset: -10px -10px auto;
+                z-index: 1;
+                height: 20px;
+                background: var(--settings-secondary-bar-solid);
+                pointer-events: none;
             }
-            
-            .dark-mode .app-detail-back {
-                background: rgba(255, 255, 255, 0.15);
-                border-color: rgba(255, 255, 255, 0.2);
-                color: var(--accent);
+
+            .settings-secondary-topbar::after {
+                content: '';
+                position: absolute;
+                inset: -10px -10px 0;
+                z-index: 0;
+                background: linear-gradient(
+                    to bottom,
+                    var(--settings-secondary-bar-solid) 0%,
+                    var(--settings-secondary-bar-solid) 34%,
+                    var(--settings-secondary-bar-90) 52%,
+                    var(--settings-secondary-bar-45) 76%,
+                    transparent 100%
+                );
+                pointer-events: none;
             }
-            
-            .dark-mode .app-detail-back:hover {
-                background: rgba(255, 255, 255, 0.25);
-            }
-            
-            .dark-mode .app-detail-back img {
-                filter: brightness(0) invert(1);
+
+            .settings-secondary-topbar .settings-secondary-back-button {
+                position: relative;
+                z-index: 2;
+                pointer-events: auto;
+                flex: 0 0 auto;
             }
             
             /* 页面切换动画 */
@@ -2207,32 +2248,6 @@ const SettingsApp = {
                 font-size: 13px;
                 color: var(--text-secondary);
                 line-height: 1.7;
-            }
-
-            .settings-page-back {
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                height: 36px;
-                padding: 0 12px;
-                margin: 0 0 18px 0;
-                border: 1px solid var(--border-color);
-                border-radius: 10px;
-                background: var(--bg-tertiary);
-                color: var(--text-primary);
-                cursor: pointer;
-                font: inherit;
-                transition: background var(--transition-fast), transform var(--transition-fast);
-            }
-
-            .settings-page-back:hover {
-                background: var(--bg-hover);
-                transform: translateY(-1px);
-            }
-
-            .settings-page-back img {
-                width: 16px;
-                height: 16px;
             }
 
             .settings-advanced-entry .fluent-setting-item-control {
@@ -4201,20 +4216,12 @@ const SettingsApp = {
     },
 
     renderPersonalizationAdvanced(container) {
-        container.className = 'settings-content settings-material-page';
+        container.className = 'settings-content settings-material-page settings-secondary-page';
 
-        const backBtn = document.createElement('button');
-        backBtn.type = 'button';
-        backBtn.className = 'settings-page-back';
-        backBtn.innerHTML = `
-            <img src="Theme/Icon/Symbol_icon/stroke/Arrow Left.svg" alt="">
-            <span>${t('settings.personalization')}</span>
-        `;
-        backBtn.addEventListener('click', () => {
+        container.appendChild(this.createSecondaryBackBar(t('settings.personalization'), () => {
             container.classList.add('slide-out');
             setTimeout(() => this.navigateToPage('personalization'), 240);
-        });
-        container.appendChild(backBtn);
+        }));
 
         const section = this.createSection(t('settings.advanced-options'));
         const currentMaterial = State.settings.materialType === 'mica' ? 'mica' : 'gaussian';
@@ -4800,17 +4807,12 @@ const SettingsApp = {
         const initialSize = Number(app.sizeBytes || this.getAppSize(app.id, app.isPWA === true) || 0);
         const initialDataSize = Number(app.dataSizeBytes || 0);
         
+        container.className = 'settings-content settings-secondary-page';
+
         const section = document.createElement('div');
         section.className = 'settings-section app-detail-page';
         
-        // 返回按钮
-        const backBtn = document.createElement('div');
-        backBtn.className = 'app-detail-back';
-        backBtn.innerHTML = `
-            <img src="Theme/Icon/Symbol_icon/stroke/Chevron Left.svg" alt="">
-            <span>${t('settings.applications')}</span>
-        `;
-        backBtn.addEventListener('click', () => {
+        container.appendChild(this.createSecondaryBackBar(t('settings.applications'), () => {
             // 播放滑出动画
             section.classList.add('slide-out');
             setTimeout(() => {
@@ -4822,8 +4824,7 @@ const SettingsApp = {
                     }
                 });
             }, 280);
-        });
-        section.appendChild(backBtn);
+        }));
         
         // 应用信息卡片
         const infoCard = document.createElement('div');
@@ -5133,22 +5134,15 @@ const SettingsApp = {
     },
 
     renderAboutChangelog(container) {
-        container.className = 'settings-content settings-about-changelog';
+        container.className = 'settings-content settings-about-changelog settings-secondary-page';
 
         const section = document.createElement('section');
         section.className = 'settings-section settings-changelog-page';
 
-        const backBtn = document.createElement('div');
-        backBtn.className = 'app-detail-back settings-changelog-back';
-        backBtn.innerHTML = `
-            <img src="Theme/Icon/Symbol_icon/stroke/Chevron Left.svg" alt="">
-            <span>${t('settings.about-title')}</span>
-        `;
-        backBtn.addEventListener('click', () => {
+        container.appendChild(this.createSecondaryBackBar(t('settings.about-title'), () => {
             section.classList.add('slide-out');
             setTimeout(() => this.navigateToPage('about'), 240);
-        });
-        section.appendChild(backBtn);
+        }));
 
         const commitCount = this.aboutChangelog.reduce((total, release) => total + release.commits.length, 0);
         const header = document.createElement('header');

@@ -322,7 +322,7 @@ The reported figure uses the origin's browser storage estimate, covering browser
 
 ## 10. Apps Created in Developer Center
 
-Apps packaged by Developer Center run in sandboxed iframes and can request host capabilities only through the injected asynchronous `FluentOS` bridge. They cannot directly access the host document or ordinary browser storage. A project must declare `storage.local` before using `FluentOS.storage`; clipboard access requires `clipboard.read`, `clipboard.write`, or both. Calls remain subject to the authorization snapshot and browser security policies.
+Apps packaged by Developer Center run in sandboxed iframes and can request host capabilities only through the injected asynchronous `FluentOS` bridge. They cannot directly access the host document or ordinary browser storage. A project must declare `storage.local` before using `FluentOS.storage`; clipboard access requires `clipboard.read`, `clipboard.write`, or both. Every declared permission starts unavailable after installation, but the App opens immediately. A professional App prompts for one permission only when it first calls the related API. FluentOS remembers both grants and denials and does not ask again after a denial.
 
 Preview windows always receive a read-only capability profile. They inherit none of the project's declared permissions or network allowlists and may only read system theme/state/language and window information. Notifications, local storage, window or theme mutation, files, desktop, clipboard, and network calls are rejected. Test those capabilities only after the App passes safety validation, receives user approval, and runs in a normal window.
 
@@ -334,7 +334,7 @@ After `storage.local` is granted, each created App has a separate namespace for 
 - At most 128 keys.
 - At most 100 KiB for one JSON-serialized value.
 
-The bridge uses a one-time, token-bound window handshake to establish a dedicated `MessageChannel`; subsequent API requests and host-state updates travel only over the port transferred to that iframe. When a window is mounted, the runtime creates an immutable authorization snapshot containing the App identity, name, read-only state, approved permissions, and network-domain allowlists. Editing or re-registering the project cannot expand the authority of an already-open iframe; close and reopen it to apply a newly approved configuration.
+The bridge uses a one-time, token-bound window handshake to establish a dedicated `MessageChannel`; subsequent API requests and host-state updates travel only over the port transferred to that iframe. When a window is mounted, the runtime creates an immutable capability snapshot containing the App identity, name, read-only state, declared permissions, and network-domain allowlists; each restricted call also reads the App's persisted user decision. Editing or re-registering the project cannot expand the declaration scope of an already-open iframe; close and reopen it to apply a new declaration configuration.
 
 ## 11. Network, Permissions, and Security
 
