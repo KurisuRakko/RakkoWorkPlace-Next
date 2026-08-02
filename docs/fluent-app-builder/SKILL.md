@@ -15,7 +15,7 @@ Build professional Fluent Apps that run in the Developer Center sandbox. Treat e
 - Never use `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `navigator.clipboard`, `localStorage`, `sessionStorage`, `indexedDB`, Cache Storage, cookies, service workers, Web Workers, `window.parent`, `window.top`, `window.opener`, or host-directed `postMessage`.
 - Use ordinary sandbox-local DOM, events, forms, timers, `URL`, `JSON`, `Math`, and in-memory JavaScript state only when no host capability is involved.
 - Use `FluentOS.storage` for persistence, `FluentOS.network` for remote resources, `FluentOS.clipboard` for the clipboard, and `FluentOS.files` for user text files.
-- Declare every permission required by the code and no unused permission. A declared permission is not pre-granted: FluentOS asks the user when the App first calls that capability. A denial is persistent and the App must handle it without retry loops.
+- Declare every permission required by the code and no unused permission. A declared permission is not pre-granted: `storage.local` is authenticated before the App first opens, while FluentOS asks for other capabilities when the App first calls them. A denial is persistent and the App must handle it without retry loops.
 - Await every asynchronous FluentOS call and handle rejection with a useful in-App message. Do not assume permission, connectivity, a browser capability, or a target system App is available.
 - Keep secrets and API keys out of HTML, CSS, JavaScript, logs, files, and persistent storage.
 - Generate separate HTML, CSS, and JavaScript suitable for the Developer Center fields. Do not add external scripts, stylesheets, fonts, iframes, objects, media, workers, or remote module imports.
@@ -161,7 +161,7 @@ window.addEventListener('fluentosstatechange', (event) => {
 
 ## Permission-gated APIs
 
-All permissions start unavailable. The first use of an undecided declared permission opens one system authentication dialog. Granted decisions are reused; denied decisions remain denied and are not requested again.
+All permissions start unavailable. An undecided declared `storage.local` permission opens one system authentication dialog before the App's first window; other permissions open their dialog on first use. Granted decisions are reused; denied decisions remain denied and are not requested again.
 
 | Permission | Allowed API | Required behavior and limits |
 | --- | --- | --- |
@@ -194,7 +194,7 @@ async function savePreferences(value) {
 }
 ```
 
-Never request permission during initial script evaluation merely to preflight access. Let the user open the App normally, then call the gated API only after the feature is invoked. After a denial, keep unrelated features usable and do not automatically call the same API again.
+Never call a gated API during initial script evaluation merely to preflight access. FluentOS performs the required `storage.local` pre-open authentication itself; call storage APIs only when the App actually needs its persisted state, and call other gated APIs only after the related feature is invoked. After a denial, keep unrelated features usable and do not automatically call the same API again.
 
 For remote data, declare only the exact host used:
 

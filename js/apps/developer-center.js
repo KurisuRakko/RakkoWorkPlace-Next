@@ -646,7 +646,7 @@ const DeveloperCenterApp = {
         const selected = new Set(Array.isArray(selectedPermissions) ? selectedPermissions : []);
         const allowed = new Set(Array.isArray(allowedPermissions) ? allowedPermissions : []);
         const english = typeof I18n !== 'undefined' && I18n.currentLang === 'en';
-        host.innerHTML = `<strong class="dc-permission-heading">${english ? 'Optional permissions' : '可选权限'}</strong><span class="dc-permission-help">${english ? 'Select only capabilities this App needs. Each capability remains unavailable until its first use, when Fluent asks the user once.' : '只选择 App 实际需要的能力；每项能力默认不可用，首次调用时 Fluent 才会单独向用户认证。'}</span>`;
+        host.innerHTML = `<strong class="dc-permission-heading">${english ? 'Optional permissions' : '可选权限'}</strong><span class="dc-permission-help">${english ? 'Select only capabilities this App needs. Local storage is authenticated before the App first opens; other capabilities are authenticated on first use.' : '只选择 App 实际需要的能力；本地存储会在 App 首次打开前认证，其他能力在首次调用时认证。'}</span>`;
         this.PERMISSIONS.filter((permission) => allowed.has(permission.id)).forEach((permission) => {
             const info = this.permissionInfo(permission.id);
             const label = document.createElement('label');

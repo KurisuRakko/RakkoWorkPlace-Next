@@ -1456,7 +1456,7 @@ const WindowManager = {
             return false;
         }
 
-        if (typeof DeveloperCreatedRuntime !== 'undefined' && DeveloperCreatedRuntime.interceptLaunch?.(appId, data)) {
+        if (typeof DeveloperCreatedRuntime !== 'undefined' && DeveloperCreatedRuntime.interceptLaunch?.(appId, data, options)) {
             return false;
         }
 

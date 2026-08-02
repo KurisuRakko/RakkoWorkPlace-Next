@@ -16,6 +16,7 @@ const DeveloperCreatedRuntime = {
     _permissionState: null,
     _permissionRequests: new Map(),
     _permissionRequestChains: new Map(),
+    _launchPreflights: new Map(),
 
     init() {
         if (this._bound) return;
@@ -180,10 +181,58 @@ const DeveloperCreatedRuntime = {
         return declaredPermissions.filter((permission) => this.getPermissionDecision(app.id, permission) === 'granted');
     },
 
-    interceptLaunch() {
-        // Installed Apps always open immediately. Professional App permissions
-        // are authenticated lazily by _ensurePermission at the first API call.
-        return false;
+    interceptLaunch(appId, data = null, options = {}) {
+        if (options?.skipCreatedAppPermissionPreflight === true) return false;
+        const app = this.apps.get(String(appId || ''));
+        if (!app || !this._declaredPermissions(app).includes('storage.local')) return false;
+        if (this.getPermissionDecision(app.id, 'storage.local')) return false;
+
+        // Local storage affects the document origin/capability profile itself,
+        // especially for PWAs, so it must be decided before the first window is
+        // created. All other capabilities remain authenticated on first use.
+        if (!this._launchPreflights.has(app.id)) {
+            const launch = this._requestPermissionDecision(app, 'storage.local')
+                .catch(() => 'denied')
+                .then(() => {
+                    if (app.type === 'pwa') this._registerPwa(app);
+                    return WindowManager.openApp(app.id, data, {
+                        ...options,
+                        skipCreatedAppPermissionPreflight: true
+                    });
+                })
+                .finally(() => {
+                    if (this._launchPreflights.get(app.id) === launch) this._launchPreflights.delete(app.id);
+                });
+            this._launchPreflights.set(app.id, launch);
+        }
+        return true;
+    },
+
+    async _requestPermissionDecision(app, permission, windowId = null) {
+        const appId = String(app?.id || '');
+        const current = this.getPermissionDecision(appId, permission);
+        if (current) return current;
+
+        const requestKey = `${appId}:${permission}`;
+        if (this._permissionRequests.has(requestKey)) return this._permissionRequests.get(requestKey);
+
+        const previous = this._permissionRequestChains.get(appId) || Promise.resolve();
+        const request = previous.catch(() => {}).then(async () => {
+            const latest = this.getPermissionDecision(appId, permission);
+            if (latest) return latest;
+            if (windowId) WindowManager.focusWindow?.(windowId);
+            const decision = await this._showPermissionDialog(app, permission);
+            this.setPermissionDecision(appId, permission, decision);
+            return decision;
+        });
+        this._permissionRequests.set(requestKey, request);
+        this._permissionRequestChains.set(appId, request);
+        try {
+            return await request;
+        } finally {
+            if (this._permissionRequests.get(requestKey) === request) this._permissionRequests.delete(requestKey);
+            if (this._permissionRequestChains.get(appId) === request) this._permissionRequestChains.delete(appId);
+        }
     },
 
     async _ensurePermission(registration, permission) {
@@ -194,38 +243,15 @@ const DeveloperCreatedRuntime = {
         if (current === 'granted') return true;
         if (current === 'denied') throw new Error(`Permission was denied: ${info.name}`);
 
-        const requestKey = `${profile.id}:${permission}`;
-        if (this._permissionRequests.has(requestKey)) {
-            const sharedDecision = await this._permissionRequests.get(requestKey);
-            if (sharedDecision === 'granted') return true;
-            throw new Error(`Permission was denied: ${info.name}`);
-        }
-
         const app = this.apps.get(profile.id) || {
             id: profile.id,
             name: profile.name,
             title: profile.title,
             network: profile.network
         };
-        const previous = this._permissionRequestChains.get(profile.id) || Promise.resolve();
-        const request = previous.catch(() => {}).then(async () => {
-            const latest = this.getPermissionDecision(profile.id, permission);
-            if (latest) return latest;
-            WindowManager.focusWindow?.(registration.windowId);
-            const decision = await this._showPermissionDialog(app, permission);
-            this.setPermissionDecision(profile.id, permission, decision);
-            return decision;
-        });
-        this._permissionRequests.set(requestKey, request);
-        this._permissionRequestChains.set(profile.id, request);
-        try {
-            const decision = await request;
-            if (decision === 'granted') return true;
-            throw new Error(`Permission was denied: ${info.name}`);
-        } finally {
-            if (this._permissionRequests.get(requestKey) === request) this._permissionRequests.delete(requestKey);
-            if (this._permissionRequestChains.get(profile.id) === request) this._permissionRequestChains.delete(profile.id);
-        }
+        const decision = await this._requestPermissionDecision(app, permission, registration.windowId);
+        if (decision === 'granted') return true;
+        throw new Error(`Permission was denied: ${info.name}`);
     },
 
     _showPermissionDialog(app, permission) {

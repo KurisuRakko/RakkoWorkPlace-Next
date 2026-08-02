@@ -425,7 +425,7 @@ window.addEventListener('message', async (event) => {
 
 ## 10. Developer Center 创建的 App
 
-Developer Center 封装的 App 在 sandbox iframe 中运行，只能通过注入的异步 `FluentOS` bridge 请求宿主能力，不能直接读取宿主页面或普通浏览器存储。使用 `FluentOS.storage` 前必须声明 `storage.local`；需要剪贴板能力时，必须显式声明 `clipboard.read`、`clipboard.write` 或两者。安装后所有已声明权限默认不可用，但 App 可以直接打开；专业 App 首次实际调用某项权限 API 时才会出现该项认证弹窗。允许和拒绝都会被记住，拒绝后不会重复询问。
+Developer Center 封装的 App 在 sandbox iframe 中运行，只能通过注入的异步 `FluentOS` bridge 请求宿主能力，不能直接读取宿主页面或普通浏览器存储。使用 `FluentOS.storage` 前必须声明 `storage.local`；需要剪贴板能力时，必须显式声明 `clipboard.read`、`clipboard.write` 或两者。安装后所有已声明权限默认不可用。声明了 `storage.local` 的 App 会在首次打开窗口前认证该权限；无论允许还是拒绝，认证完成后 App 都会继续打开。其他权限在首次实际调用对应 API 时认证。允许和拒绝都会被记住，拒绝后不会重复询问。
 
 预览窗口始终使用只读能力配置：不会继承项目声明的任何权限或网络白名单，只允许读取系统主题/状态/语言和窗口信息。通知、本地存储、修改窗口或主题、文件、桌面、剪贴板及网络调用都会被拒绝。要测试这些能力，应先通过安全检查和用户授权封装 App，再在正式窗口中运行。
 
