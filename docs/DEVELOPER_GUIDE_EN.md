@@ -1,8 +1,8 @@
-# FluentOS-On-Web 2.0 Developer Guide
+# RakkoWorkPlace-Next Developer Guide
 
 [简体中文](DEVELOPER_GUIDE.md) | [English](DEVELOPER_GUIDE_EN.md)
 
-This guide is for developers who want to understand, debug, or extend FluentOS-On-Web. The project uses traditional browser scripts: there are no npm runtime dependencies, ES modules, build artifacts, or frontend frameworks. `index.html` loads scripts in dependency order, and modules expose objects in the global scope.
+This guide is for developers who want to understand, debug, or extend RakkoWorkPlace-Next. The project uses traditional browser scripts: there are no npm runtime dependencies, ES modules, build artifacts, or frontend frameworks. `index.html` loads scripts in dependency order, and modules expose objects in the global scope.
 
 See the [project README](../README_EN.md) for usage and the [Fluent UI Guide](fluent-ui-guide-en.md) for components and visual conventions.
 
@@ -266,7 +266,7 @@ Catalog entries are stored in `js/third_parts_apps/pwa-catalog.js`. Cross-origin
 
 Only entries whose ID and URL exactly match the source-controlled catalog, and Developer Center PWAs with a declared and approved `storage.local` permission, receive `allow-same-origin` in the iframe sandbox. This lets the PWA use `localStorage`, sign-in state, and other same-origin data belonging to its own site origin. Other PWAs remain on an opaque origin; direct calls to `PWALoader.register()` cannot expand that authority.
 
-Cross-origin PWAs distributed as packages and requesting `storage.local` must implement the Fluent OS storage handshake. It lets Settings report the site's real data usage and clear that origin's `localStorage` before uninstalling. `FLUENT_OS_ORIGIN` must be the exact trusted deployment origin; do not use `*`:
+Cross-origin PWAs distributed as packages and requesting `storage.local` must implement the RakkoWorkPlace-Next storage handshake. It lets Settings report the site's real data usage and clear that origin's `localStorage` before uninstalling. `FLUENT_OS_ORIGIN` must be the exact trusted deployment origin; do not use `*`:
 
 ```javascript
 const FLUENT_OS_ORIGIN = 'https://your-fluent-os.example';
@@ -318,7 +318,7 @@ window.addEventListener('message', async (event) => {
 });
 ```
 
-The reported figure uses the origin's browser storage estimate, covering browser-managed data such as Local Storage, IndexedDB, Cache Storage, and OPFS, and Fluent OS counts it entirely as App data. Apps that keep IndexedDB connections open should listen for `fluentos:before-storage-clear` and close them first. PWAs without handshake support can still be uninstalled, but their site-origin data remains. After protocol support is confirmed, a cleanup timeout or failure cancels the uninstall.
+The reported figure uses the origin's browser storage estimate, covering browser-managed data such as Local Storage, IndexedDB, Cache Storage, and OPFS, and RakkoWorkPlace-Next counts it entirely as App data. Apps that keep IndexedDB connections open should listen for `fluentos:before-storage-clear` and close them first. PWAs without handshake support can still be uninstalled, but their site-origin data remains. After protocol support is confirmed, a cleanup timeout or failure cancels the uninstall.
 
 ## 10. Apps Created in Developer Center
 

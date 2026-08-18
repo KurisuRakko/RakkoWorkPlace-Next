@@ -1,4 +1,6 @@
-# FluentOS-On-Web 2.0
+# RakkoWorkPlace-Next
+
+本项目 fork 自 [YoYoPAN1115/FluentOS-On-Web](https://github.com/YoYoPAN1115/FluentOS-On-Web)，遵循 MIT 协议，感谢原作者。
 
 [简体中文](README.md) | [English](README_EN.md)
 
@@ -11,7 +13,7 @@
 
 ## ✨ 特性
 
-- 🚀 完整的系统流程：开机 → 锁屏 → 登录 → 桌面
+- 🚀 完整的系统流程：开机 → 桌面
 - 💾 本地持久化存储（localStorage）
 - 🎨 Fluent Design 风格界面（毛玻璃、圆角、阴影）
 - 🌓 支持浅色/深色主题切换
@@ -20,7 +22,7 @@
 
 当前系统版本：`2.5.260802`（以 `js/core/resource-manifest.js` 为准）。
 
-> FluentOS-On-Web 是 Web 桌面模拟项目，不是真正的操作系统。文件、设置与“安装的应用”主要保存在当前浏览器中，不能访问或管理宿主系统的真实账户、进程和完整文件系统。
+> RakkoWorkPlace-Next 是 Web 桌面模拟项目，不是真正的操作系统。文件、设置与“安装的应用”主要保存在当前浏览器中，不能访问或管理宿主系统的真实账户、进程和完整文件系统。
 
 ## 主要能力
 
@@ -42,8 +44,8 @@
 | 文件 | 虚拟目录、搜索、面包屑导航、回收站、外部文件导入与应用间文件打开 |
 | 设置 | 账户、网络、个性化、应用、多任务、时间与语言、隐私、Fingo、实验室及开发者选项 |
 | 进程管理 | 查看应用资源使用情况并管理正在运行的应用 |
-| 终端 | 在受控命令环境中操作 FluentOS 的虚拟文件和系统功能 |
-| 提示 | 浏览 FluentOS 功能介绍与使用提示 |
+| 终端 | 在受控命令环境中操作 RakkoWorkPlace-Next 的虚拟文件和系统功能 |
+| 提示 | 浏览 RakkoWorkPlace-Next 功能介绍与使用提示 |
 | 计算器 | 标准/专业计算、历史记录和键盘输入 |
 | 记事本 | 多标签富文本编辑、虚拟文件读写、外部文本导入、HTML 导出和大字报模式 |
 | 浏览器 | 多标签页、地址搜索、历史记录与收藏站点；页面实际由 iframe 加载 |
@@ -76,7 +78,7 @@ npx http-server . -p 8000
 
 - 摄像头、剪贴板、定位、全屏和文件选择器由浏览器控制；通常要求 `localhost` 或 HTTPS，并需要用户授权。
 - 天气、Bing 壁纸、小组件、Fingo 自定义模型和灵翼依赖网络及第三方服务。
-- 某些站点通过 `X-Frame-Options` 或 CSP 禁止 iframe 嵌入，因此 App Shop 或浏览器中的对应页面可能无法显示。这不是 FluentOS 能绕过的限制。
+- 某些站点通过 `X-Frame-Options` 或 CSP 禁止 iframe 嵌入，因此 App Shop 或浏览器中的对应页面可能无法显示。这不是 RakkoWorkPlace-Next 能绕过的限制。
 - Fingo API Key 属于敏感信息。优先选择临时保存；永久模式使用浏览器端加密，但仍不应在不可信设备上配置。
 
 ## 常用快捷键
@@ -103,7 +105,7 @@ npx http-server . -p 8000
 ## 项目结构
 
 ```text
-FluentOS-On-Web 2.0/
+RakkoWorkPlace-Next/
 ├─ index.html                 # 页面骨架与按顺序加载的样式/脚本
 ├─ css/
 │  ├─ main.css               # 系统基础样式、主题令牌与窗口外壳

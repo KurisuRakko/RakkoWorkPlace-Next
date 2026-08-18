@@ -333,7 +333,7 @@ const Storage = {
                                     id: 'welcome',
                                     name: '欢迎.txt',
                                     type: 'file',
-                                    content: '欢迎使用 Fluent OS！\n\n这是一个基于 Web 技术构建的仿真操作系统。\n\n功能特性：\n- 完整的开机、锁屏、登录流程\n- 文件管理系统\n- 系统设置\n- 通知中心\n- 控制中心\n\n默认 PIN：1234\n\n享受探索！',
+                                    content: '欢迎使用 RakkoWorkPlace-Next！\n\n这是一个基于 Web 技术构建的仿真操作系统。\n\n功能特性：\n- 完整的开机、锁屏、登录流程\n- 文件管理系统\n- 系统设置\n- 通知中心\n- 控制中心\n\n默认 PIN：1234\n\n享受探索！',
                                     size: 256,
                                     created: new Date().toISOString(),
                                     modified: new Date().toISOString()
@@ -396,7 +396,7 @@ const Storage = {
                 {
                     id: 'welcome',
                     title: '欢迎',
-                    message: '欢迎使用 Fluent OS！',
+                    message: '欢迎使用 RakkoWorkPlace-Next！',
                     type: 'info',
                     time: new Date().toISOString()
                 }

@@ -173,7 +173,7 @@ function scheduleAutoEnterFullscreen() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('%c Fluent OS ', 'background: #0078d4; color: white; font-size: 16px; padding: 4px 8px; border-radius: 4px;');
+    console.log('%c RakkoWorkPlace-Next ', 'background: #0078d4; color: white; font-size: 16px; padding: 4px 8px; border-radius: 4px;');
     console.log('正在启动系统...');
 
     // 初始化存储
@@ -736,12 +736,6 @@ function initGlobalShortcuts() {
                     handled = true;
                 }
                 break;
-            case 'l':
-                if (typeof State !== 'undefined' && typeof State.lock === 'function') {
-                    State.lock();
-                    handled = true;
-                }
-                break;
             case 'e':
                 if (typeof WindowManager !== 'undefined') {
                     WindowManager.openApp('files');
@@ -890,10 +884,6 @@ function handlePowerAction({ action }) {
             BootScreen.show();
             State.view = 'boot';
             scheduleAutoEnterFullscreen();
-        } else if (action === 'logout') {
-            hideAllViews();
-            LockScreen.show();
-            State.view = 'lock';
         }
 
         // 淡出覆盖层
@@ -1886,6 +1876,6 @@ window.FluentOS = {
 };
 
 // 欢迎消息
-console.log('%c欢迎使用 Fluent OS！', 'color: #0078d4; font-size: 14px; font-weight: bold;');
+console.log('%c欢迎使用 RakkoWorkPlace-Next！', 'color: #0078d4; font-size: 14px; font-weight: bold;');
 console.log('💡 提示: 使用 FluentOS.debug 访问调试工具');
 console.log('📝 默认 PIN: 1234');

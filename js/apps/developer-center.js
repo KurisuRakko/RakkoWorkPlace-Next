@@ -24,14 +24,14 @@ const DeveloperCenterApp = {
             title: '开发者中心 (BETA)', home: '主页', build: '构建 App', apps: '我的 Apps', tools: '工具', settings: '设置',
             commonTools: '常用工具', recent: '最近的项目', buildMine: '构建我的 App',
             buildMineDesc: '尝试构建自己的第一个 App，完成后可添加到桌面、导出并分享。', startBuilding: '开始构建',
-            buildTitle: '构建 App', buildDesc: '从网站或代码创建属于你的 FluentOS App。', pwa: '构建 PWA App',
+            buildTitle: '构建 App', buildDesc: '从网站或代码创建属于你的 RakkoWorkPlace-Next App。', pwa: '构建 PWA App',
             pwaDesc: '将安全、支持嵌入的 HTTPS 网站封装为独立 App。', professional: '构建专业 App',
             professionalDesc: '使用 HTML、CSS、JavaScript 和安全系统 API 构建 App。', allProjects: '我的全部项目', noProjects: '还没有项目',
             noProjectsDesc: '选择上方的一种类型开始创建。', projectName: '项目名称', newPwa: '新建 PWA 项目', newProfessional: '新建专业 App 项目',
             namePlaceholder: '输入唯一的项目名称', invalidName: '名称不能为空，且不得与已有项目或 App 重复',
             appName: '应用名称', url: '链接地址 (URL)', icon: '图标', upload: '上传图标', windowTitle: '窗口标题',
             html: 'HTML 内容', css: 'CSS 样式（可选）', js: 'JavaScript 代码（可选）', preview: '预览',
-            forceFluent: '强制使用 FluentUI 组件库', forceFluentDesc: '用 FluentOS 内置样式接管按钮、输入框、选择框、勾选框、滑块和滚动条。',
+            forceFluent: '强制使用 FluentUI 组件库', forceFluentDesc: '用 RakkoWorkPlace-Next 内置样式接管按钮、输入框、选择框、勾选框、滑块和滚动条。',
             saveDraft: '暂存项目', package: '一键封装', apiDocs: 'API 参考文档', saved: '项目已暂存',
             downloadAiSkill: '下载 AI Skill',
             apiDocsReminder: '开始构建前建议先查看 API 参考文档，确认 Fluent 可以封装的能力。',
@@ -55,14 +55,14 @@ const DeveloperCenterApp = {
             title: 'Developer Center (BETA)', home: 'Home', build: 'Build App', apps: 'My Apps', tools: 'Tools', settings: 'Settings',
             commonTools: 'Common tools', recent: 'Recent projects', buildMine: 'Build my App',
             buildMineDesc: 'Build your first App, add it to the desktop, export it, and share it.', startBuilding: 'Start building',
-            buildTitle: 'Build App', buildDesc: 'Create your own FluentOS App from a website or code.', pwa: 'Build PWA App',
+            buildTitle: 'Build App', buildDesc: 'Create your own RakkoWorkPlace-Next App from a website or code.', pwa: 'Build PWA App',
             pwaDesc: 'Package a secure, embeddable HTTPS website as an independent App.', professional: 'Build professional App',
             professionalDesc: 'Build with HTML, CSS, JavaScript, and safe system APIs.', allProjects: 'All my projects', noProjects: 'No projects yet',
             noProjectsDesc: 'Choose a project type above to get started.', projectName: 'Project name', newPwa: 'New PWA project', newProfessional: 'New professional App project',
             namePlaceholder: 'Enter a unique project name', invalidName: 'The name cannot be empty or duplicate an existing project or App',
             appName: 'App name', url: 'Link address (URL)', icon: 'Icon', upload: 'Upload icon', windowTitle: 'Window title',
             html: 'HTML content', css: 'CSS styles (optional)', js: 'JavaScript code (optional)', preview: 'Preview',
-            forceFluent: 'Force FluentUI components', forceFluentDesc: 'Use FluentOS controls for buttons, inputs, selects, checks, sliders, and scrollbars.',
+            forceFluent: 'Force FluentUI components', forceFluentDesc: 'Use RakkoWorkPlace-Next controls for buttons, inputs, selects, checks, sliders, and scrollbars.',
             saveDraft: 'Save draft', package: 'Package now', apiDocs: 'API reference', saved: 'Project saved',
             downloadAiSkill: 'Download AI Skill',
             apiDocsReminder: 'Review the API reference before building to confirm which capabilities Fluent can package.',
@@ -101,7 +101,7 @@ const DeveloperCenterApp = {
 
     PERMISSIONS: [
         { id: 'storage.local', titleZh: '读写浏览器本地存储', titleEn: 'Read and write browser local storage', descZh: '允许持久保存和读取此 App 自己的本地数据。', descEn: 'Persist and read browser-local data owned by this App.' },
-        { id: 'system.theme.write', titleZh: '修改系统主题', titleEn: 'Change system theme', descZh: '允许切换浅色、深色或自动主题。', descEn: 'Switch FluentOS between light, dark, and automatic themes.' },
+        { id: 'system.theme.write', titleZh: '修改系统主题', titleEn: 'Change system theme', descZh: '允许切换浅色、深色或自动主题。', descEn: 'Switch RakkoWorkPlace-Next between light, dark, and automatic themes.' },
         { id: 'window.manage', titleZh: '管理当前窗口', titleEn: 'Manage this window', descZh: '允许修改此 App 的窗口标题和尺寸。', descEn: 'Change this App window title and size.' },
         { id: 'files.readText', titleZh: '读取文本文件', titleEn: 'Read text files', descZh: '按文件 ID 读取不超过 512 KB 的本地文本文件。', descEn: 'Read local text files up to 512 KB by file ID.' },
         { id: 'files.writeText', titleZh: '写入文本文件', titleEn: 'Write text files', descZh: '修改文本文件，或在“文档”中创建安全的文本文件。', descEn: 'Update text files or create safe text files in Documents.' },
@@ -418,7 +418,7 @@ const DeveloperCenterApp = {
                 const project = await DeveloperCenterStore.saveProject({
                     name, type, title: name, url: type === 'pwa' ? 'https://' : '',
                     icon: 'Theme/Icon/App_icon/created_app.png',
-                    html: type === 'professional' ? '<main>\n  <h1>Hello, FluentOS!</h1>\n  <button id="hello">Try FluentOS API</button>\n</main>' : '',
+                    html: type === 'professional' ? '<main>\n  <h1>Hello, RakkoWorkPlace-Next!</h1>\n  <button id="hello">Try FluentOS API</button>\n</main>' : '',
                     css: type === 'professional' ? 'main { padding: 32px; }' : '',
                     js: type === 'professional' ? "document.querySelector('#hello')?.addEventListener('click', () => {\n  FluentOS.notify('Hello', 'Your App is running!', 'success');\n});" : '',
                     forceFluentUI: type === 'professional',
@@ -773,7 +773,7 @@ const DeveloperCenterApp = {
             <div class="dc-api-row dc-api-privileged"><code>await FluentOS.clipboard.read() / write(text)</code><span>Permissions: clipboard.read / clipboard.write. Read or write text when browser permission also allows it.</span><button type="button" data-copy-api>Copy</button></div>
             <div class="dc-api-row"><code>await FluentOS.getWindowInfo()</code><span>Read this App window's title, size, and maximized state.</span><button type="button" data-copy-api>Copy</button></div>
             <div class="dc-api-row"><code>FluentOS.ui.highlightButton('#save', true) / enableButtonGlow('#save', true)</code><span>Apply the Fluent primary-button appearance or system pointer highlight feedback to matching controls.</span><button type="button" data-copy-api>Copy</button></div>
-            <div class="dc-api-row dc-api-privileged"><code>await FluentOS.system.setTheme('dark') / toggleTheme()</code><span>Permission: system.theme.write. Change the global FluentOS theme.</span><button type="button" data-copy-api>Copy</button></div>
+            <div class="dc-api-row dc-api-privileged"><code>await FluentOS.system.setTheme('dark') / toggleTheme()</code><span>Permission: system.theme.write. Change the global RakkoWorkPlace-Next theme.</span><button type="button" data-copy-api>Copy</button></div>
             <div class="dc-api-row dc-api-privileged"><code>await FluentOS.window.setTitle(title) / setSize(width, height)</code><span>Permission: window.manage. Manage only this App's window.</span><button type="button" data-copy-api>Copy</button></div>
             <div class="dc-api-row dc-api-privileged"><code>await FluentOS.files.listText('documents') / readText(id) / writeText(id, content) / createText(name, content)</code><span>Permissions: files.readText / files.writeText. List only Documents, Downloads, or Desktop; text content is limited to 512 KB and new files go to Documents.</span><button type="button" data-copy-api>Copy</button></div>
             <div class="dc-api-row dc-api-privileged"><code>await FluentOS.desktop.addShortcut() / removeShortcut()</code><span>Permission: desktop.manage. Manage only this App's own desktop shortcut.</span><button type="button" data-copy-api>Copy</button></div>

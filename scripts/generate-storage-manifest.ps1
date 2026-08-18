@@ -3,7 +3,7 @@ param([switch]$Check)
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $output = Join-Path $root 'js/core/storage-manifest.js'
-$rootUri = [Uri]::new(($root.TrimEnd('\') + '\'))
+$rootUri = [Uri]::new(($root.TrimEnd([char]'\', [char]'/') + [IO.Path]::DirectorySeparatorChar))
 $entries = [ordered]@{}
 $targets = @((Join-Path $root 'index.html'), (Join-Path $root 'js'), (Join-Path $root 'css'), (Join-Path $root 'Theme'))
 $files = foreach ($target in $targets) {

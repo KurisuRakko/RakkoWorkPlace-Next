@@ -304,7 +304,7 @@ const State = {
             windowHoverSnapEnabled: true,
             windowTopMaximizeEnabled: false,
             processManagerRefreshInterval: 3000,
-            startPinnedApps: ['files', 'settings', 'calculator', 'notes', 'browser', 'clock', 'weather', 'appshop', 'camera', 'photos', 'media'],
+            startPinnedApps: ['files', 'settings', 'calculator', 'notes', 'browser', 'clock', 'weather', 'camera', 'photos', 'media'],
             developerModeUnlocked: false,
             debugModeEnabled: false,
             hideDeveloperCenter: true,

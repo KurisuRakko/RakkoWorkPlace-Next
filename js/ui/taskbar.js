@@ -120,8 +120,6 @@ const Taskbar = {
             id: 'start-button-power-menu',
             className: 'context-menu start-button-power-menu',
             items: [
-                { id: 'lock', label: t('start.power.lock'), icon: 'Lock', onClick: () => this.handleStartPowerAction('lock') },
-                { id: 'logout', label: t('start.power.logout'), icon: 'Logout', onClick: () => this.handleStartPowerAction('logout') },
                 { id: 'restart', label: t('start.power.restart'), icon: 'Refresh', onClick: () => this.handleStartPowerAction('restart') },
                 { id: 'shutdown', label: t('start.power.shutdown'), icon: 'Shut Down', onClick: () => this.handleStartPowerAction('shutdown') }
             ]
@@ -262,9 +260,7 @@ const Taskbar = {
 
     handleStartPowerAction(action) {
         this.hideStartContextMenus();
-        if (action === 'lock') State.lock();
-        else if (action === 'logout') State.logout();
-        else if (action === 'restart') State.restart();
+        if (action === 'restart') State.restart();
         else if (action === 'shutdown') State.shutdown();
     },
 

@@ -2,7 +2,7 @@
 
 [简体中文](fluent-ui-guide.md) | [English](fluent-ui-guide-en.md)
 
-This guide covers the visual foundations, `FluentUI` DOM factory, and `FluentWindow` application framework in FluentOS-On-Web 2.0. The documented interfaces correspond to `js/core/fluent-ui.js`, `js/core/fluent-window.js`, and their stylesheets.
+This guide covers the visual foundations, `FluentUI` DOM factory, and `FluentWindow` application framework in RakkoWorkPlace-Next. The documented interfaces correspond to `js/core/fluent-ui.js`, `js/core/fluent-window.js`, and their stylesheets.
 
 See the [Developer Guide](DEVELOPER_GUIDE_EN.md) for architecture and app registration.
 

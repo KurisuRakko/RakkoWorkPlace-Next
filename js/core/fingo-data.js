@@ -344,16 +344,6 @@ const FingoData = {
             action: 'power:restart',
             response: { zh: '正在为你重启系统...', en: 'Restarting...' }
         },
-        logout: {
-            keywords: ['注销', '登出', 'logout', 'sign out', 'log out'],
-            action: 'power:logout',
-            response: { zh: '正在注销...', en: 'Logging out...' }
-        },
-        lock: {
-            keywords: ['锁屏', '锁定', 'lock', 'lock screen'],
-            action: 'power:lock',
-            response: { zh: '正在锁定屏幕 🔒', en: 'Locking screen 🔒' }
-        },
         // ===== 打开应用（通用） =====
         openApp: {
             keywords: ['打开', '启动', '运行', '打开一下', '开一下', '点开', 'open', 'launch', 'run', 'start'],
@@ -466,11 +456,11 @@ const FingoData = {
             action: 'openSettings:fingo',
             response: { zh: '正在打开 Fingo AI 设置... 🤖', en: 'Opening Fingo AI settings... 🤖' }
         },
-        // ===== 介绍 FluentOS =====
+        // ===== 介绍 RakkoWorkPlace-Next =====
         aboutFluentOS: {
-            keywords: ['介绍fluentos', '什么是fluentos', 'fluentos是什么', 'about fluentos', 'what is fluentos', '介绍系统', '关于系统'],
+            keywords: ['介绍fluentos', '什么是fluentos', 'fluentos是什么', 'about fluentos', 'what is fluentos', '介绍系统', '关于系统', '介绍rakkoworkplace', '什么是rakkoworkplace', 'rakkoworkplace是什么', 'about rakkoworkplace', 'what is rakkoworkplace'],
             action: 'none',
-            response: { zh: 'FluentOS 是一个基于 Web 技术构建的模拟操作系统 💻\n\n✨ 采用 Fluent Design 设计语言\n🛠️ 纯 HTML5 + CSS3 + JavaScript 实现\n📱 内置文件管理、浏览器、天气、时钟等系统应用\n🛒 支持通过 App Shop 安装第三方应用\n🤖 集成 Fingo AI 智能助手\n\n这是一个开源项目，欢迎体验和贡献！', en: 'FluentOS is a web-based simulated operating system 💻\n\n✨ Fluent Design language\n🛠️ Pure HTML5 + CSS3 + JavaScript\n📱 Built-in apps: Files, Browser, Weather, Clock, etc.\n🛒 App Shop for third-party apps\n🤖 Fingo AI assistant\n\nIt\'s open source - feel free to explore and contribute!' }
+            response: { zh: 'RakkoWorkPlace-Next 是一个基于 Web 技术构建的模拟操作系统 💻\n\n✨ 采用 Fluent Design 设计语言\n🛠️ 纯 HTML5 + CSS3 + JavaScript 实现\n📱 内置文件管理、浏览器、天气、时钟等系统应用\n🛒 支持安装第三方 Web 应用\n🤖 集成 Fingo AI 智能助手\n\n这是一个开源项目，欢迎体验和贡献！', en: 'RakkoWorkPlace-Next is a web-based simulated operating system 💻\n\n✨ Fluent Design language\n🛠️ Pure HTML5 + CSS3 + JavaScript\n📱 Built-in apps: Files, Browser, Weather, Clock, etc.\n🛒 Third-party web app installation\n🤖 Fingo AI assistant\n\nIt\'s open source - feel free to explore and contribute!' }
         },
         // ===== 亮度 =====
         brightnessUp: {
@@ -623,11 +613,11 @@ const FingoData = {
             response: {
                 zh: [
                     '你好呀，我是 Fingo 👋 你的系统搭子已上线！\n要不要我给你一份 30 秒新手指引？（是/否）',
-                    '嗨～Fingo 在这儿 ✨\n想快速熟悉 FluentOS 吗？回复「是」我马上带你上手。'
+                    '嗨～Fingo 在这儿 ✨\n想快速熟悉 RakkoWorkPlace-Next 吗？回复「是」我马上带你上手。'
                 ],
                 en: [
                     'Hi, I am Fingo 👋 Your system sidekick is ready.\nWant a 30-second quick-start guide? (yes/no)',
-                    'Hey there ✨\nWant to learn FluentOS quickly? Reply "yes" and I will guide you.'
+                    'Hey there ✨\nWant to learn RakkoWorkPlace-Next quickly? Reply "yes" and I will guide you.'
                 ]
             }
         },
@@ -635,8 +625,8 @@ const FingoData = {
             keywords: ['帮助', '帮助一下', '做什么', '能做什么', '能干什么', '能干嘛', '能做啥', '能做哪些', '能做哪些功能', '你能做什么', '功能', '你能干啥', '怎么用', 'help', 'what can you do', 'how to use'],
             action: 'none',
             response: {
-                zh: '我是 Fingo，你的系统智能助手 🤖 以下是我能帮你做的事：\n\n🎨外观主题\n　「切换深色模式」「浅色模式」「自动主题」\n\n✨ 系统效果\n　「开启/关闭模糊」「开启/关闭动画」「窗口模糊」「新版外观」\n　「进入网页全屏」「退出网页全屏」「开启/关闭开机自动网页全屏」\n　「重置主题和动效」恢复默认外观\n\n🧭 多任务与窗口\n　「打开/关闭任务视图」「最小化所有窗口」「最小化当前窗口」\n　「怎么分屏/贴边布局」「窗口不见了怎么办」\n\n📶 连接与网络\n　「开启/关闭蓝牙」「开启/关闭Wi-Fi」\n\n📱应用管理\n　「安装哔哩哔哩」「卸载xx」「修复浏览器」\n　· 系统应用不可卸载，运行中的应用会先询问确认\n\n🖼️ 个性化\n　「换张壁纸」自动从 Bing 获取精美壁纸\n　「调高/调低亮度」\n　「任务栏能不能固定App」\n\n💬 休闲聊天\n　「我好无聊」「讲个笑话」「来个谜语」「现在几点」\n\n⚙️ 系统设置\n　「语言设置」「改密码」「Fingo AI 设置」\n　「你会说什么语言」「你会说英文吗」\n\n⚡ 电源操作\n　「关机」「重启」「注销」「锁屏」\n\n💡 想了解 FluentOS？说「介绍FluentOS」\n🧠 想让我更聪明？说「自定义模式」了解 API 接入',
-                en: 'I\'m Fingo, your system assistant \u{1F916} Here\'s what I can do:\n\n\u{1F3A8} Themes\n\u3000"dark mode" "light mode" "auto theme"\n\n\u2728 Effects\n\u3000"enable/disable blur" "animation" "window blur" "new UI"\n\u3000"enter fullscreen" "exit fullscreen" "enable/disable auto web fullscreen on boot"\n\u3000"reset theme and effects" to defaults\n\n\u{1F9ED} Multitasking\n\u3000"open/close task view" "minimize all windows" "minimize current window"\n\u3000"how to snap windows" "where is minimized window"\n\n\u{1F4F6} Connectivity\n\u3000"enable/disable bluetooth" "enable/disable Wi-Fi"\n\n\u{1F4F1} App Management\n\u3000"install Bilibili" "uninstall xx" "repair browser"\n\u3000\u00B7 System apps can\'t be uninstalled; running apps ask for confirmation\n\n\u{1F5BC}\uFE0F Personalization\n\u3000"change wallpaper" and "brightness up/down"\n\u3000"how to pin app to taskbar"\n\n\u{1F4AC} Casual Chat\n\u3000"i am bored" "tell me a joke" "give me a riddle" "what time is it"\n\n\u2699\uFE0F Settings\n\u3000"language settings" "change password" "Fingo AI settings"\n\u3000"what languages do you speak" "can you speak english/chinese"\n\n\u26A1 Power\n\u3000"shutdown" "restart" "logout" "lock"\n\n\u{1F4A1} Say "about FluentOS" to learn more\n\u{1F9E0} Say "custom mode" to connect your own AI API'
+                zh: '我是 Fingo，你的系统智能助手 🤖 以下是我能帮你做的事：\n\n🎨外观主题\n　「切换深色模式」「浅色模式」「自动主题」\n\n✨ 系统效果\n　「开启/关闭模糊」「开启/关闭动画」「窗口模糊」「新版外观」\n　「进入网页全屏」「退出网页全屏」「开启/关闭开机自动网页全屏」\n　「重置主题和动效」恢复默认外观\n\n🧭 多任务与窗口\n　「打开/关闭任务视图」「最小化所有窗口」「最小化当前窗口」\n　「怎么分屏/贴边布局」「窗口不见了怎么办」\n\n📶 连接与网络\n　「开启/关闭蓝牙」「开启/关闭Wi-Fi」\n\n📱应用管理\n　「安装哔哩哔哩」「卸载xx」「修复浏览器」\n　· 系统应用不可卸载，运行中的应用会先询问确认\n\n🖼️ 个性化\n　「换张壁纸」自动从 Bing 获取精美壁纸\n　「调高/调低亮度」\n　「任务栏能不能固定App」\n\n💬 休闲聊天\n　「我好无聊」「讲个笑话」「来个谜语」「现在几点」\n\n⚙️ 系统设置\n　「语言设置」「改密码」「Fingo AI 设置」\n　「你会说什么语言」「你会说英文吗」\n\n⚡ 电源操作\n　「关机」「重启」\n\n💡 想了解 RakkoWorkPlace-Next？说「介绍RakkoWorkPlace」\n🧠 想让我更聪明？说「自定义模式」了解 API 接入',
+                en: 'I\'m Fingo, your system assistant \u{1F916} Here\'s what I can do:\n\n\u{1F3A8} Themes\n\u3000"dark mode" "light mode" "auto theme"\n\n\u2728 Effects\n\u3000"enable/disable blur" "animation" "window blur" "new UI"\n\u3000"enter fullscreen" "exit fullscreen" "enable/disable auto web fullscreen on boot"\n\u3000"reset theme and effects" to defaults\n\n\u{1F9ED} Multitasking\n\u3000"open/close task view" "minimize all windows" "minimize current window"\n\u3000"how to snap windows" "where is minimized window"\n\n\u{1F4F6} Connectivity\n\u3000"enable/disable bluetooth" "enable/disable Wi-Fi"\n\n\u{1F4F1} App Management\n\u3000"install Bilibili" "uninstall xx" "repair browser"\n\u3000\u00B7 System apps can\'t be uninstalled; running apps ask for confirmation\n\n\u{1F5BC}\uFE0F Personalization\n\u3000"change wallpaper" and "brightness up/down"\n\u3000"how to pin app to taskbar"\n\n\u{1F4AC} Casual Chat\n\u3000"i am bored" "tell me a joke" "give me a riddle" "what time is it"\n\n\u2699\uFE0F Settings\n\u3000"language settings" "change password" "Fingo AI settings"\n\u3000"what languages do you speak" "can you speak english/chinese"\n\n\u26A1 Power\n\u3000"shutdown" "restart"\n\n\u{1F4A1} Say "about RakkoWorkPlace" to learn more\n\u{1F9E0} Say "custom mode" to connect your own AI API'
             }
         },
         shortcutsHelp: {
@@ -648,8 +638,8 @@ const FingoData = {
             ],
             action: 'none',
             response: {
-                zh: '当前可用快捷键如下：\n\n- Alt：打开/关闭开始菜单\n- Alt+F：打开 Fingo AI\n- Alt+I：快速打开设置\n- Alt+L：快速锁屏\n- Alt+E：打开文件 App\n- Alt+A：打开控制中心\n- Ctrl+A：在桌面/文件 App 中全选文件\n- Alt+D：一键最小化所有窗口\n- Alt+M：最小化当前置顶窗口\n- Alt+W：打开任务视图\n\n如果你只是想快速打开开始菜单，直接按一下 Alt 键即可。',
-                en: 'Current shortcuts:\n\n- Alt: Open/close Start Menu\n- Alt+F: Open Fingo AI\n- Alt+I: Open Settings\n- Alt+L: Lock screen\n- Alt+E: Open Files\n- Alt+A: Open Control Center\n- Ctrl+A: Select all files/icons in Desktop or Files\n- Alt+D: Minimize all windows\n- Alt+M: Minimize topmost window\n- Alt+W: Open Task View\n\nIf you only want Start Menu, just press Alt once.'
+                zh: '当前可用快捷键如下：\n\n- Alt：打开/关闭开始菜单\n- Alt+F：打开 Fingo AI\n- Alt+I：快速打开设置\n- Alt+E：打开文件 App\n- Alt+A：打开控制中心\n- Ctrl+A：在桌面/文件 App 中全选文件\n- Alt+D：一键最小化所有窗口\n- Alt+M：最小化当前置顶窗口\n- Alt+W：打开任务视图\n\n如果你只是想快速打开开始菜单，直接按一下 Alt 键即可。',
+                en: 'Current shortcuts:\n\n- Alt: Open/close Start Menu\n- Alt+F: Open Fingo AI\n- Alt+I: Open Settings\n- Alt+E: Open Files\n- Alt+A: Open Control Center\n- Ctrl+A: Select all files/icons in Desktop or Files\n- Alt+D: Minimize all windows\n- Alt+M: Minimize topmost window\n- Alt+W: Open Task View\n\nIf you only want Start Menu, just press Alt once.'
             }
         },
         // ===== 轻聊天增强 =====
@@ -809,8 +799,8 @@ const FingoData = {
             keywords: ['我爱你', '喜欢你', '爱你', 'love you', 'i like you'],
             action: 'none',
             response: {
-                zh: ['收到 ❤️ 我会用稳定和好用来回应你。', '谢谢喜欢，我们一起把 FluentOS 用顺手。'],
-                en: ['Love received ❤️ I will respond with useful actions.', 'Thanks. Let us make FluentOS smoother together.']
+                zh: ['收到 ❤️ 我会用稳定和好用来回应你。', '谢谢喜欢，我们一起把 RakkoWorkPlace-Next 用顺手。'],
+                en: ['Love received ❤️ I will respond with useful actions.', 'Thanks. Let us make RakkoWorkPlace-Next smoother together.']
             }
         },
         // ===== 智能模式提示 =====
@@ -838,7 +828,7 @@ const FingoData = {
                 ],
                 en: [
                     'I get your frustration 😅 Right now I mainly use keyword matching.\nEnable custom mode with API Key if you want smarter replies.',
-                    'Tell me the exact task you want to do in FluentOS, and I will execute it directly.'
+                    'Tell me the exact task you want to do in RakkoWorkPlace-Next, and I will execute it directly.'
                 ]
             }
         }

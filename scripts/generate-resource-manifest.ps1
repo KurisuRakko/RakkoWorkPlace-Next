@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $output = Join-Path $root 'js/core/resource-manifest.js'
-$rootUri = [Uri]::new(($root.TrimEnd('\') + '\'))
+$rootUri = [Uri]::new(($root.TrimEnd([char]'\', [char]'/') + [IO.Path]::DirectorySeparatorChar))
 
 if (-not $SystemVersion -and (Test-Path -LiteralPath $output -PathType Leaf)) {
     $existing = Get-Content -LiteralPath $output -Raw -Encoding UTF8
@@ -63,9 +63,9 @@ if ($Check) {
     if ($actual -cne $content) {
         throw 'Resource manifest is stale. Run scripts/generate-resource-manifest.ps1.'
     }
-    Write-Host "Resource manifest is current ($($entries.Count) revisions, Fluent OS $SystemVersion)."
+    Write-Host "Resource manifest is current ($($entries.Count) revisions, RakkoWorkPlace-Next $SystemVersion)."
     return
 }
 
 [IO.File]::WriteAllText($output, $content, [Text.UTF8Encoding]::new($false))
-Write-Host "Generated $output with $($entries.Count) resource revisions for Fluent OS $SystemVersion."
+Write-Host "Generated $output with $($entries.Count) resource revisions for RakkoWorkPlace-Next $SystemVersion."

@@ -734,7 +734,6 @@ const Fingo = {
             ['壁纸', '桌面背景', '背景图', '墙纸'],
             ['重启', '重新启动', '重新开机'],
             ['关机', '关闭电脑', '关电脑'],
-            ['锁屏', '锁定', '锁定屏幕'],
             ['卸载', '删除', '移除', '卸掉'],
             ['安装', '下载', '装上'],
             ['修复', '修一下', '修一修', '修好'],
@@ -1783,8 +1782,6 @@ const Fingo = {
                 setTimeout(() => {
                     if (value === 'shutdown') State.shutdown();
                     else if (value === 'restart') State.restart();
-                    else if (value === 'logout') State.logout();
-                    else if (value === 'lock') State.lock();
                 }, 600);
                 break;
             case 'openApp':
@@ -1822,7 +1819,7 @@ const Fingo = {
             : [];
 
         const systemPrompt = options.systemPrompt
-            || 'You are Fingo, a helpful assistant built into FluentOS. Reply concisely. If user asks about shortcuts, provide this mapping: Alt opens Start Menu; Alt+F Fingo AI; Alt+I Settings; Alt+L lock screen; Alt+E Files; Alt+A Control Center; Ctrl+A select all files/icons in Desktop or Files; Alt+D minimize all windows; Alt+M minimize topmost window; Alt+W Task View. If user asks about fullscreen, ask whether to disable "Auto Web Fullscreen On Boot" and wait for yes/no confirmation. If user asks what languages you support, say you currently support Chinese and English and are learning more languages. On greeting, proactively offer a quick-start guide and ask yes/no.';
+            || 'You are Fingo, a helpful assistant built into RakkoWorkPlace-Next. Reply concisely. If user asks about shortcuts, provide this mapping: Alt opens Start Menu; Alt+F Fingo AI; Alt+I Settings; Alt+E Files; Alt+A Control Center; Ctrl+A select all files/icons in Desktop or Files; Alt+D minimize all windows; Alt+M minimize topmost window; Alt+W Task View. If user asks about fullscreen, ask whether to disable "Auto Web Fullscreen On Boot" and wait for yes/no confirmation. If user asks what languages you support, say you currently support Chinese and English and are learning more languages. On greeting, proactively offer a quick-start guide and ask yes/no.';
         const userMessage = { role: 'user', content: String(text || '').trim() };
         const messages = [
             { role: 'system', content: systemPrompt },
@@ -1900,7 +1897,7 @@ const Fingo = {
 
         const sysMsg = {
             role: 'system',
-            content: 'You are Fingo, a helpful assistant built into FluentOS. Reply concisely. If user asks about shortcuts, provide this mapping: Alt opens Start Menu; Alt+F Fingo AI; Alt+I Settings; Alt+L lock screen; Alt+E Files; Alt+A Control Center; Ctrl+A select all files/icons in Desktop or Files; Alt+D minimize all windows; Alt+M minimize topmost window; Alt+W Task View. If user asks about fullscreen, ask whether to disable "Auto Web Fullscreen On Boot" and wait for yes/no confirmation. If user asks what languages you support, say you currently support Chinese and English and are learning more languages. On greeting, proactively offer a quick-start guide and ask yes/no.'
+            content: 'You are Fingo, a helpful assistant built into RakkoWorkPlace-Next. Reply concisely. If user asks about shortcuts, provide this mapping: Alt opens Start Menu; Alt+F Fingo AI; Alt+I Settings; Alt+E Files; Alt+A Control Center; Ctrl+A select all files/icons in Desktop or Files; Alt+D minimize all windows; Alt+M minimize topmost window; Alt+W Task View. If user asks about fullscreen, ask whether to disable "Auto Web Fullscreen On Boot" and wait for yes/no confirmation. If user asks what languages you support, say you currently support Chinese and English and are learning more languages. On greeting, proactively offer a quick-start guide and ask yes/no.'
         };
 
         let url, body, headers;

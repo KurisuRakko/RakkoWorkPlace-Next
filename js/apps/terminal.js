@@ -23,7 +23,7 @@ const TerminalApp = {
         this.container.innerHTML = `
             <div class="terminal-app" role="application" aria-label="Terminal">
                 <div class="terminal-toolbar">
-                    <span class="terminal-session-dot"></span><span>FluentOS Shell</span>
+                    <span class="terminal-session-dot"></span><span>RakkoWorkPlace-Next Shell</span>
                     <button type="button" data-action="clear" title="Clear terminal">Clear</button>
                 </div>
                 <div class="terminal-output" role="log" aria-live="polite"></div>
@@ -34,7 +34,7 @@ const TerminalApp = {
             </div>`;
         this.output = this.container.querySelector('.terminal-output');
         this.input = this.container.querySelector('.terminal-input');
-        this.print('FluentOS Terminal 2.0.0', 'banner');
+        this.print('RakkoWorkPlace-Next Terminal 2.0.0', 'banner');
         this.print('Type help to list commands. Tab completes commands; Up/Down recalls history.', 'muted');
         this.container.querySelector('[data-action="clear"]').addEventListener('click', () => this.clear());
         this.input.addEventListener('keydown', (event) => this.onKeyDown(event));
@@ -140,7 +140,7 @@ const TerminalApp = {
         }
     },
 
-    commandNames() { return ['help','man','clear','history','echo','date','whoami','hostname','pwd','cd','ls','uname','neofetch','fluentfetch','ps','kill','xdg-open','fluentctl','systemctl','loginctl','shutdown','reboot','poweroff','exit','sudo','cancel']; },
+    commandNames() { return ['help','man','clear','history','echo','date','whoami','hostname','pwd','cd','ls','uname','neofetch','fluentfetch','ps','kill','xdg-open','fluentctl','systemctl','shutdown','reboot','poweroff','exit','sudo','cancel']; },
     args(raw) {
         const result = [];
         let token = '', quote = '', escaped = false;
@@ -205,7 +205,6 @@ const TerminalApp = {
             case 'xdg-open': return this.xdgOpen(argv);
             case 'fluentctl': return this.fluentctl(argv, elevated);
             case 'systemctl': return this.systemctl(argv);
-            case 'loginctl': return this.loginctl(argv);
             case 'shutdown': return this.shutdownCommand(argv);
             case 'reboot': if (argv.length) return this.usage('reboot'); return this.requestPower('restart');
             case 'poweroff': if (argv.length) return this.usage('poweroff'); return this.requestPower('shutdown');
@@ -218,12 +217,12 @@ const TerminalApp = {
     showHelp(topic) {
         if (topic) return this.showManual(topic);
         this.print([
-            'FluentOS shell commands:',
+            'RakkoWorkPlace-Next shell commands:',
             '  help, man, clear, history, echo, date, whoami, hostname',
             '  pwd, cd, ls, uname, neofetch, ps, kill, xdg-open, exit',
-            '  systemctl, loginctl, shutdown, reboot, poweroff',
+            '  systemctl, shutdown, reboot, poweroff',
             '',
-            'FluentOS system control:',
+            'RakkoWorkPlace-Next system control:',
             '  fluentctl <object> <action> [arguments]',
             '  fluentctl --help',
             '',
@@ -233,8 +232,8 @@ const TerminalApp = {
     showManual(topic) {
         const pages = {
             fluentctl: [
-                'FLUENTCTL(1)                 FluentOS Manual', '',
-                'NAME', '    fluentctl - control FluentOS services and desktop state', '',
+                'FLUENTCTL(1)                 RakkoWorkPlace-Next Manual', '',
+                'NAME', '    fluentctl - control RakkoWorkPlace-Next services and desktop state', '',
                 'SYNOPSIS', '    fluentctl <object> <action> [arguments]', '',
                 'OBJECTS',
                 '    status',
@@ -253,14 +252,13 @@ const TerminalApp = {
                 '    user reset    (requires sudo and lock-screen PIN)'
             ],
             ls: ['LS(1)', '', 'SYNOPSIS', '    ls [PATH]', '', 'PATHS', '    /home/owner', '    /usr/share/applications', '    /proc/windows'],
-            ps: ['PS(1)', '', 'SYNOPSIS', '    ps [-a]', '', 'Lists FluentOS app windows as processes.'],
+            ps: ['PS(1)', '', 'SYNOPSIS', '    ps [-a]', '', 'Lists RakkoWorkPlace-Next app windows as processes.'],
             kill: ['KILL(1)', '', 'SYNOPSIS', '    kill [-TERM|-STOP|-CONT|-9] <PID|APP-ID>'],
             'xdg-open': ['XDG-OPEN(1)', '', 'SYNOPSIS', '    xdg-open app://<app-id>', '    xdg-open settings://<page-id>'],
             systemctl: ['SYSTEMCTL(1)', '', 'SYNOPSIS', '    systemctl reboot', '    systemctl poweroff'],
-            loginctl: ['LOGINCTL(1)', '', 'SYNOPSIS', '    loginctl lock-session', '    loginctl terminate-user'],
             shutdown: ['SHUTDOWN(8)', '', 'SYNOPSIS', '    shutdown -h now', '    shutdown -r now'],
             uname: ['UNAME(1)', '', 'SYNOPSIS', '    uname [-a|-s|-r|-m]'],
-            neofetch: ['NEOFETCH(1)', '', 'NAME', '    neofetch - display FluentOS system information', '', 'SYNOPSIS', '    neofetch', '    fluentfetch']
+            neofetch: ['NEOFETCH(1)', '', 'NAME', '    neofetch - display RakkoWorkPlace-Next system information', '', 'SYNOPSIS', '    neofetch', '    fluentfetch']
         };
         const page = pages[String(topic || '').toLowerCase()];
         if (!page) return this.print(`No manual entry for ${topic}`, 'error');
@@ -272,7 +270,7 @@ const TerminalApp = {
             cd: 'Usage: cd [DIRECTORY]', ls: 'Usage: ls [PATH]', uname: 'Usage: uname [-a|-s|-r|-m]', neofetch: 'Usage: neofetch',
             ps: 'Usage: ps [-a]', kill: 'Usage: kill [-TERM|-STOP|-CONT|-9] <PID|APP-ID>',
             'xdg-open': 'Usage: xdg-open <app://APP-ID|settings://PAGE-ID>',
-            systemctl: 'Usage: systemctl <reboot|poweroff>', loginctl: 'Usage: loginctl <lock-session|terminate-user>',
+            systemctl: 'Usage: systemctl <reboot|poweroff>',
             shutdown: 'Usage: shutdown <-h|-r> now', fluentctl: "Usage: fluentctl <object> <action> [arguments] (try 'fluentctl --help')"
         };
         this.print(messages[command] || `Usage error: ${command}`, 'error');
@@ -319,7 +317,7 @@ const TerminalApp = {
         if (argv.length > 1 || (argv[0] && !['-a','-s','-r','-m'].includes(argv[0]))) return this.usage('uname');
         const flag = argv[0] || '-s';
         const version = this.getSystemVersion();
-        const values = { '-s':'FluentOS', '-r':version, '-m':'web', '-a':`FluentOS fluentos ${version} FluentOS-Web web` };
+        const values = { '-s':'RakkoWorkPlace-Next', '-r':version, '-m':'web', '-a':`RakkoWorkPlace-Next fluentos ${version} RakkoWorkPlace-Next-Web web` };
         this.print(values[flag]);
     },
     getSystemVersion() {
@@ -371,12 +369,12 @@ const TerminalApp = {
         const nativeCount = Desktop.apps.filter(app => app.isPWA !== true).length;
         const pwaCount = Desktop.apps.length - nativeCount;
         const rows = [
-            ['OS', `FluentOS Web ${this.getSystemVersion()}`],
+            ['OS', `RakkoWorkPlace-Next Web ${this.getSystemVersion()}`],
             ['Host', host],
-            ['Kernel', `FluentOS ${this.getSystemVersion()}`],
+            ['Kernel', `RakkoWorkPlace-Next ${this.getSystemVersion()}`],
             ['Uptime', this.formatUptime(globalThis.performance?.now?.() || 0)],
             ['Packages', `${Desktop.apps.length} (${nativeCount} native, ${pwaCount} web)`],
-            ['Shell', 'FluentOS Shell 2.0.0'],
+            ['Shell', 'RakkoWorkPlace-Next Shell 2.0.0'],
             ['Resolution', resolution],
             ['DE', 'Fluent Desktop'],
             ['WM', 'Fluent Window Manager'],
@@ -529,12 +527,6 @@ const TerminalApp = {
         if (argv[0] === 'poweroff') return this.requestPower('shutdown');
         return this.print(`systemctl: unknown command '${argv[0]}'`, 'error');
     },
-    loginctl(argv) {
-        if (argv.length !== 1) return this.usage('loginctl');
-        if (argv[0] === 'lock-session') return State.lock();
-        if (argv[0] === 'terminate-user') return this.requestPower('logout');
-        return this.print(`loginctl: unknown command '${argv[0]}'`, 'error');
-    },
     shutdownCommand(argv) {
         if (argv.length !== 2 || argv[1] !== 'now' || !['-h','-r'].includes(argv[0])) return this.usage('shutdown');
         return this.requestPower(argv[0] === '-r' ? 'restart' : 'shutdown');
@@ -612,7 +604,7 @@ const TerminalApp = {
             return;
         }
         this.cancelProfileClear(false);
-        this.print('PIN verified. Clearing local user data and restarting FluentOS...', 'success');
+        this.print('PIN verified. Clearing local user data and restarting RakkoWorkPlace-Next...', 'success');
         if (typeof SettingsApp.runDataClearAndReboot === 'function') {
             void SettingsApp.runDataClearAndReboot();
         } else {

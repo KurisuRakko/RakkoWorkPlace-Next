@@ -103,14 +103,14 @@ const OOBE = {
     i18n: {
         zh: {
             languageTitle: '语言 & Language',
-            languageSubtitle: '选择 Fluent OS 的显示语言。',
+            languageSubtitle: '选择 RakkoWorkPlace-Next 的显示语言。',
             langZhTitle: '简体中文',
             langZhDesc: '推荐中文用户',
             langEnTitle: 'English',
             langEnDesc: 'For English users',
 
             themePageTitle: '系统主题',
-            themePageSubtitle: '让 Fluent OS 看起来更像你。',
+            themePageSubtitle: '让 RakkoWorkPlace-Next 看起来更像你。',
             themeTitle: '颜色模式',
             themeLight: '浅色',
             themeDark: '深色',
@@ -173,14 +173,14 @@ const OOBE = {
         },
         en: {
             languageTitle: 'Language',
-            languageSubtitle: 'Choose the display language for Fluent OS.',
+            languageSubtitle: 'Choose the display language for RakkoWorkPlace-Next.',
             langZhTitle: 'Chinese',
             langZhDesc: 'Simplified Chinese UI',
             langEnTitle: 'English',
             langEnDesc: 'Recommended for English users',
 
             themePageTitle: 'Theme',
-            themePageSubtitle: 'Make Fluent OS feel like yours.',
+            themePageSubtitle: 'Make RakkoWorkPlace-Next feel like yours.',
             themeTitle: 'Color mode',
             themeLight: 'Light',
             themeDark: 'Dark',
@@ -402,14 +402,10 @@ const OOBE = {
     },
 
     _shouldWarnDefaultPinBeforeFinish() {
-        const pinInput = document.getElementById('oobe-pin-input');
-        const inputPin = pinInput ? String(pinInput.value || '').trim() : '';
-        const currentPin = String(State?.settings?.pin || '1234').trim() || '1234';
-        const hasValidNewPin = inputPin.length >= 4 && inputPin.length <= 10;
-        const effectivePin = hasValidNewPin ? inputPin : currentPin;
-        const pinChanged = hasValidNewPin && inputPin !== currentPin;
-
-        return !pinChanged && effectivePin === '1234';
+        // 锁屏已在前端下线（PIN 输入面板 #oobe-pin-input 已移除），
+        // 默认 PIN 警告失去意义：直接返回 false，不再弹警告对话框。
+        // _showDefaultPinWarningDialog 函数本体保留，仅不再被触发。
+        return false;
     },
 
     _showDefaultPinWarningDialog() {
@@ -992,7 +988,6 @@ const OOBE = {
 
     _syncUserStepState() {
         const d = this._dict();
-        const next4 = document.getElementById('oobe-next-5');
 
         const name = String(this.selectedUserName || '').trim();
         const email = String(this.selectedUserEmail || '').trim();
@@ -1010,11 +1005,6 @@ const OOBE = {
         if (this.userInlineStatusEl) {
             this.userInlineStatusEl.textContent = message;
             this.userInlineStatusEl.classList.toggle('error', !valid);
-        }
-
-        if (next4) {
-            next4.disabled = !valid;
-            next4.classList.toggle('is-disabled', !valid);
         }
 
         return valid;
@@ -1413,12 +1403,10 @@ const OOBE = {
         const next2 = document.getElementById('oobe-next-2');
         const next3 = document.getElementById('oobe-next-3');
         const next4 = document.getElementById('oobe-next-4');
-        const next5 = document.getElementById('oobe-next-5');
         const back2 = document.getElementById('oobe-back-2');
         const back3 = document.getElementById('oobe-back-3');
         const back4 = document.getElementById('oobe-back-4');
         const back5 = document.getElementById('oobe-back-5');
-        const back6 = document.getElementById('oobe-back-6');
         const finish = document.getElementById('oobe-finish');
         const enterDesktop = document.getElementById('oobe-enter-desktop');
 
@@ -1432,15 +1420,10 @@ const OOBE = {
         if (next2) next2.addEventListener('click', () => this._setStep(3));
         if (next3) next3.addEventListener('click', () => this._setStep(4));
         if (next4) next4.addEventListener('click', () => this._setStep(5));
-        if (next5) next5.addEventListener('click', () => {
-            if (!this._syncUserStepState()) return;
-            this._setStep(6);
-        });
         if (back2) back2.addEventListener('click', () => this._setStep(1));
         if (back3) back3.addEventListener('click', () => this._setStep(2));
         if (back4) back4.addEventListener('click', () => this._setStep(3));
         if (back5) back5.addEventListener('click', () => this._setStep(4));
-        if (back6) back6.addEventListener('click', () => this._setStep(5));
         if (finish) finish.addEventListener('click', () => this.completeAndEnterDesktop());
         if (enterDesktop) enterDesktop.addEventListener('click', () => this.enterDesktopFromCompletion());
 
@@ -2727,13 +2710,13 @@ const OOBE = {
         if (langEnDesc) langEnDesc.textContent = d.langEnDesc;
 
         this._initThemeControls();
-        ['oobe-next-1', 'oobe-next-2', 'oobe-next-3', 'oobe-next-4', 'oobe-next-5'].forEach((id) => {
+        ['oobe-next-1', 'oobe-next-2', 'oobe-next-3', 'oobe-next-4'].forEach((id) => {
             const button = document.getElementById(id);
             if (!button) return;
             button.title = d.next;
             button.setAttribute('aria-label', d.next);
         });
-        ['oobe-back-1', 'oobe-back-2', 'oobe-back-3', 'oobe-back-4', 'oobe-back-5', 'oobe-back-6'].forEach((id) => {
+        ['oobe-back-1', 'oobe-back-2', 'oobe-back-3', 'oobe-back-4', 'oobe-back-5'].forEach((id) => {
             const button = document.getElementById(id);
             if (button) button.title = d.back;
         });
@@ -2750,8 +2733,8 @@ const OOBE = {
 
         if (this.welcomeBrandTextEl) {
             this.welcomeBrandTextEl.textContent = this._langCode() === 'zh'
-                ? 'Fluent OS 青山湖'
-                : 'Fluent OS Qingshan Lake';
+                ? 'RakkoWorkPlace-Next 青山湖'
+                : 'RakkoWorkPlace-Next Qingshan Lake';
         }
         this.welcomeCopyEl?.classList.toggle('is-english', this._langCode() !== 'zh');
         if (this.welcomeNextEl) {
@@ -2854,7 +2837,7 @@ const OOBE = {
         const bridge = document.createElement('img');
         bridge.className = 'oobe-logo-bridge';
         bridge.src = bootLogoEl.currentSrc || bootLogoEl.src || this.welcomeLogoEl.currentSrc || this.welcomeLogoEl.src;
-        bridge.alt = 'Fluent OS';
+        bridge.alt = 'RakkoWorkPlace-Next';
         bridge.style.left = `${startRect.left}px`;
         bridge.style.top = `${startRect.top}px`;
         bridge.style.width = `${startRect.width}px`;
@@ -3002,8 +2985,8 @@ const OOBE = {
     _startWelcomeBrandSequence(delay = 320) {
         if (this.welcomeBrandTextEl) {
             this.welcomeBrandTextEl.textContent = this._langCode() === 'zh'
-                ? 'Fluent OS 青山湖'
-                : 'Fluent OS Qingshan Lake';
+                ? 'RakkoWorkPlace-Next 青山湖'
+                : 'RakkoWorkPlace-Next Qingshan Lake';
         }
         this.welcomeCopyEl?.classList.toggle('is-english', this._langCode() !== 'zh');
         if (this.welcomeBrandEl) {

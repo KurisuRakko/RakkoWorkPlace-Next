@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$rootUri = [Uri]::new(($root.TrimEnd('\') + '\'))
+$rootUri = [Uri]::new(($root.TrimEnd([char]'\', [char]'/') + [IO.Path]::DirectorySeparatorChar))
 $errors = [Collections.Generic.List[string]]::new()
 $warnings = [Collections.Generic.List[string]]::new()
 

@@ -9,7 +9,7 @@ window.FluentPWACatalog = [
         name: '提示',
         category: 'tools',
         icon: 'tips.png',
-        developer: 'Fluent OS',
+        developer: 'RakkoWorkPlace-Next',
         rating: 4.9,
         downloads: '预装',
         featured: true,
@@ -23,14 +23,14 @@ window.FluentPWACatalog = [
         minWidth: 760,
         minHeight: 520,
         themeColor: '#0078d4',
-        desc: '通过动画化的真实设置预览，快速了解 Fluent OS 的个性化、账户与多任务操作。'
+        desc: '通过动画化的真实设置预览，快速了解 RakkoWorkPlace-Next 的个性化、账户与多任务操作。'
     },
     {
         id: 'camera',
         name: '相机',
         category: 'tools',
         icon: 'camera.png',
-        developer: 'Fluent OS',
+        developer: 'RakkoWorkPlace-Next',
         rating: 4.7,
         downloads: '预装',
         featured: true,
@@ -44,14 +44,14 @@ window.FluentPWACatalog = [
         minWidth: 760,
         minHeight: 520,
         themeColor: '#2563eb',
-        desc: 'Fluent OS 原生相机应用，支持摄像头预览、拍照和下载照片。'
+        desc: 'RakkoWorkPlace-Next 原生相机应用，支持摄像头预览、拍照和下载照片。'
     },
     {
         id: 'photos',
         name: '照片',
         category: 'lifestyle',
         icon: 'photos.png',
-        developer: 'Fluent OS',
+        developer: 'RakkoWorkPlace-Next',
         rating: 4.8,
         downloads: '预装',
         featured: true,
@@ -63,14 +63,14 @@ window.FluentPWACatalog = [
         width: 1000,
         height: 700,
         themeColor: '#0f6cbd',
-        desc: 'Fluent OS 原生照片应用，可浏览和编辑图片，并使用 Bing 每日精选壁纸。'
+        desc: 'RakkoWorkPlace-Next 原生照片应用，可浏览和编辑图片，并使用 Bing 每日精选壁纸。'
     },
     {
         id: 'media',
         name: '多媒体',
         category: 'music',
         icon: 'media.png',
-        developer: 'Fluent OS',
+        developer: 'RakkoWorkPlace-Next',
         rating: 4.8,
         downloads: '预装',
         featured: true,
@@ -84,7 +84,7 @@ window.FluentPWACatalog = [
         minWidth: 640,
         minHeight: 360,
         themeColor: '#0078d4',
-        desc: 'Fluent OS 原生多媒体应用，可播放本地音乐和视频，支持文件与文件夹导入。'
+        desc: 'RakkoWorkPlace-Next 原生多媒体应用，可播放本地音乐和视频，支持文件与文件夹导入。'
     },
     {
         id: 'office',

@@ -9,7 +9,6 @@ const StartMenu = {
     powerBtn: null,
     fullscreenBtn: null,
     powerMenu: null,
-    powerLogoutMenu: null,
     isOpen: false,
     recentContainer: null,
     currentView: 'home',
@@ -24,7 +23,6 @@ const StartMenu = {
         this.powerBtn = document.getElementById('power-btn');
         this.fullscreenBtn = document.getElementById('fullscreen-btn');
         this.powerMenu = document.getElementById('power-menu');
-        this.powerLogoutMenu = document.getElementById('power-logout-menu');
         this.recentContainer = document.getElementById('start-recent-items');
 
         this.bindEvents();
@@ -224,7 +222,7 @@ const StartMenu = {
         // display name (for example alipay -> 支付宝 -> Z).
         const pinyinInitialById = {
             files:'W', settings:'S', 'process-manager':'J', 'developer-center':'K', terminal:'Z', tips:'T',
-            calculator:'J', notes:'J', browser:'L', clock:'S', weather:'T', appshop:'A',
+            calculator:'J', notes:'J', browser:'L', clock:'S', weather:'T',
             camera:'X', photos:'Z', media:'D', office:'O', 'shimo-office':'S',
             'qq-mail':'Q', didaqingdan:'D', canva:'C', chatgpt:'C', deepseek:'D', qwen:'Q', kimi:'K',
             baidu:'B', 'baidu-netdisk':'B', youdaofanyi:'Y', coolapk:'K', bilibili:'B',
@@ -525,16 +523,7 @@ const StartMenu = {
         // 电源按钮 - 左键
         this.powerBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.closePowerLogoutMenu();
             this.togglePowerMenu();
-        });
-
-        // 电源按钮 - 右键弹出注销菜单
-        this.powerBtn.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.closePowerMenu();
-            this.togglePowerLogoutMenu();
         });
 
         // 浏览器网页全屏切换
@@ -549,15 +538,6 @@ const StartMenu = {
 
         // 电源菜单项（左键菜单）
         this.powerMenu.addEventListener('click', (e) => {
-            const item = e.target.closest('.power-menu-item');
-            if (item) {
-                const action = item.dataset.action;
-                this.handlePowerAction(action);
-            }
-        });
-
-        // 注销菜单项（右键菜单）
-        this.powerLogoutMenu.addEventListener('click', (e) => {
             const item = e.target.closest('.power-menu-item');
             if (item) {
                 const action = item.dataset.action;
@@ -645,10 +625,8 @@ const StartMenu = {
                 this.close();
             }
             if (!this.powerMenu.contains(e.target) &&
-                !this.powerLogoutMenu.contains(e.target) &&
                 !e.target.closest('#power-btn')) {
                 this.closePowerMenu();
-                this.closePowerLogoutMenu();
             }
         });
 
@@ -1128,25 +1106,8 @@ const StartMenu = {
         fillIcon.classList.add('hidden');
     },
 
-    togglePowerLogoutMenu() {
-        if (this.powerLogoutMenu.classList.contains('hidden')) {
-            const btnRect = this.powerBtn.getBoundingClientRect();
-            this.powerLogoutMenu.style.bottom = `${window.innerHeight - btnRect.top + 8}px`;
-            this.powerLogoutMenu.style.right = `${window.innerWidth - btnRect.right}px`;
-            this.powerLogoutMenu.style.left = 'auto';
-            this.powerLogoutMenu.classList.remove('hidden');
-        } else {
-            this.closePowerLogoutMenu();
-        }
-    },
-
-    closePowerLogoutMenu() {
-        this.powerLogoutMenu.classList.add('hidden');
-    },
-
     handlePowerAction(action) {
         this.closePowerMenu();
-        this.closePowerLogoutMenu();
         this.close();
 
         switch (action) {
@@ -1156,17 +1117,11 @@ const StartMenu = {
             case 'restart':
                 State.restart();
                 break;
-            case 'logout':
-                State.logout();
-                break;
-            case 'lock':
-                State.lock();
-                break;
         }
     },
 
     // 系统内置应用列表（不可卸载）
-    systemApps: ['files', 'settings', 'terminal', 'calculator', 'notes', 'browser', 'clock', 'weather', 'appshop'],
+    systemApps: ['files', 'settings', 'terminal', 'calculator', 'notes', 'browser', 'clock', 'weather'],
     
     showAppContextMenu(event, appId) {
         const app = Desktop.apps.find(a => a.id === appId);

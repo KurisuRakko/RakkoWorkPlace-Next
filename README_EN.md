@@ -1,4 +1,6 @@
-# FluentOS-On-Web 2.0
+# RakkoWorkPlace-Next
+
+This project is forked from [YoYoPAN1115/FluentOS-On-Web](https://github.com/YoYoPAN1115/FluentOS-On-Web) and is licensed under the MIT License. Thanks to the original author.
 
 [简体中文](README.md) | [English](README_EN.md)
 
@@ -12,7 +14,7 @@ Because I wanted to create my “dream OS”: nearly bug-free and extremely fast
 
 ## ✨ Features
 
-- 🚀 Complete system flow: boot → lock screen → login → desktop
+- 🚀 Complete system flow: boot → desktop
 - 💾 Local persistence with `localStorage`
 - 🎨 Fluent Design-inspired interface with glass, rounded corners, and shadows
 - 🌓 Light and dark theme support
@@ -21,7 +23,7 @@ Because I wanted to create my “dream OS”: nearly bug-free and extremely fast
 
 Current system version: `2.5.260802` (see `js/core/resource-manifest.js`).
 
-> FluentOS-On-Web is a web desktop simulation, not an operating system. Files, settings, and “installed apps” are primarily stored in the current browser. It cannot access or manage the host system's real accounts, processes, or complete file system.
+> RakkoWorkPlace-Next is a web desktop simulation, not an operating system. Files, settings, and “installed apps” are primarily stored in the current browser. It cannot access or manage the host system's real accounts, processes, or complete file system.
 
 ## Main Capabilities
 
@@ -43,8 +45,8 @@ Current system version: `2.5.260802` (see `js/core/resource-manifest.js`).
 | Files | Virtual folders, search, breadcrumb navigation, Recycle Bin, external file import, and cross-app file opening |
 | Settings | Accounts, network, personalization, apps, multitasking, time and language, privacy, Fingo, Labs, and developer options |
 | Process Manager | Inspect application resource usage and manage running applications |
-| Terminal | Work with FluentOS virtual files and system features through a controlled command environment |
-| Tips | Browse FluentOS feature introductions and usage tips |
+| Terminal | Work with RakkoWorkPlace-Next virtual files and system features through a controlled command environment |
+| Tips | Browse RakkoWorkPlace-Next feature introductions and usage tips |
 | Calculator | Standard and scientific calculations, history, and keyboard input |
 | Notes | Tabbed rich-text editing, virtual file access, external text import, HTML export, and teleprompter mode |
 | Browser | Tabs, address/search input, history, and favorite sites; pages are loaded through iframes |
@@ -77,7 +79,7 @@ The latest Chromium-based browsers are recommended. Most of the interface also w
 
 - Camera, clipboard, geolocation, fullscreen, and file-picker access are controlled by the browser. They generally require `localhost` or HTTPS and explicit user permission.
 - Weather, Bing wallpapers, widgets, custom Fingo models, and Lingyi depend on the network and third-party services.
-- Some sites block iframe embedding through `X-Frame-Options` or CSP. Those pages may not appear in App Shop or Browser, and FluentOS cannot bypass this restriction.
+- Some sites block iframe embedding through `X-Frame-Options` or CSP. Those pages may not appear in App Shop or Browser, and RakkoWorkPlace-Next cannot bypass this restriction.
 - Fingo API keys are sensitive. Prefer temporary storage. Permanent mode uses browser-side encryption, but keys should still not be configured on untrusted devices.
 
 ## Keyboard Shortcuts
@@ -104,7 +106,7 @@ These shortcuts apply in the desktop view and do not intercept `Ctrl` or `Meta` 
 ## Project Structure
 
 ```text
-FluentOS-On-Web 2.0/
+RakkoWorkPlace-Next/
 ├─ index.html                 # Page shell and ordered stylesheet/script loading
 ├─ css/
 │  ├─ main.css               # Base system styles, theme tokens, and window shell

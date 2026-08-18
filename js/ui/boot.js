@@ -803,22 +803,20 @@ const BootScreen = {
         const shouldGoOobe = typeof OOBE !== 'undefined'
             && typeof OOBE.shouldShowOnFirstLaunch === 'function'
             && OOBE.shouldShowOnFirstLaunch();
-        const shouldGoDesktop = !shouldGoOobe
-            && !!(typeof State !== 'undefined' && State.settings && State.settings.debugModeEnabled === true);
-        const targetView = shouldGoOobe ? 'oobe' : (shouldGoDesktop ? 'desktop' : 'lock');
+        // 锁屏已在前端下线：开机后直接进入桌面（锁屏/登录后端逻辑保留，便于日后恢复）。
+        const shouldGoDesktop = !shouldGoOobe;
+        const targetView = shouldGoOobe ? 'oobe' : 'desktop';
 
         const bootLogoEl = this.element ? this.element.querySelector('.boot-logo') : null;
         if (shouldGoOobe && typeof OOBE.show === 'function') {
             OOBE.show({ bootLogoEl });
-        } else if (shouldGoDesktop && typeof Desktop !== 'undefined' && typeof Desktop.show === 'function') {
+        } else if (typeof Desktop !== 'undefined' && typeof Desktop.show === 'function') {
             Desktop.show();
-        } else {
-            LockScreen.show();
         }
 
         const targetEl = shouldGoOobe
             ? document.getElementById('oobe-screen')
-            : (shouldGoDesktop ? document.getElementById('desktop-screen') : document.getElementById('lock-screen'));
+            : document.getElementById('desktop-screen');
 
         if (!targetEl) {
             State.view = targetView;

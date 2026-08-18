@@ -533,7 +533,7 @@ const DeveloperCreatedRuntime = {
             : `default-src 'none'; script-src 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:${allowedImageSources}; font-src 'self' data:; connect-src 'none'; frame-src 'none'; media-src 'none'; object-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'; navigate-to 'none'`;
         const safeJs = String(app.js || '').replace(/<\/script/gi, '<\\/script');
         const safeCss = String(app.css || '').replace(/<\/style/gi, '<\\/style');
-        const html = String(app.html || '<main><h1>Hello, FluentOS!</h1></main>');
+        const html = String(app.html || '<main><h1>Hello, RakkoWorkPlace-Next!</h1></main>');
         let documentPrefix = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><meta name="referrer" content="no-referrer"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${baseCss}</style><style>${safeCss}</style>${fluentStylesheet}<style>${forceCss}</style></head><body>${html}<script>${bridge}<\/script><script>${fluentRuntime}<\/script><script>`;
         const appLineOffset = documentPrefix.split('\n').length - 1;
         documentPrefix = documentPrefix.replace('__APP_LINE_OFFSET__', String(appLineOffset));

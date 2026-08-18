@@ -2613,7 +2613,7 @@ const SettingsApp = {
     
     // 概览页面
     getDeviceName() {
-        const fallbackName = 'Fluent OS';
+        const fallbackName = 'RakkoWorkPlace-Next';
         const raw = String(State?.settings?.deviceName || '').trim();
         return raw || fallbackName;
     },
@@ -4836,7 +4836,7 @@ const SettingsApp = {
                 <div class="app-detail-info">
                     <div class="app-detail-name">${app.name}</div>
                     <div class="app-detail-version">${t('settings.version')} ${this.getAppVersion(app.id)}</div>
-                    <div class="app-detail-developer">${isSystem ? 'Fluent OS' : t('settings.third-party-dev')}</div>
+                    <div class="app-detail-developer">${isSystem ? 'RakkoWorkPlace-Next' : t('settings.third-party-dev')}</div>
                 </div>
             </div>
         `;
@@ -5083,7 +5083,7 @@ const SettingsApp = {
                     <img class="settings-about-logo-light" src="Theme/Icon/Fluent_logo.png" alt="">
                     <img class="settings-about-logo-dark" src="Theme/Icon/Fluent_logo_dark.png" alt="">
                 </div>
-                <div class="settings-about-brand-name">FluentOS</div>
+                <div class="settings-about-brand-name">RakkoWorkPlace-Next</div>
             </div>
             <div class="settings-about-card-codename">${qingshanLakeCodename}</div>
         `;

@@ -14,7 +14,7 @@ const ProcessManagerApp = {
     unsubscribers: [],
 
     CORE_PROCESSES: [
-        { id: 'shell-host', name: 'FluentOS Shell Host', icon: 'Home', pid: 104 },
+        { id: 'shell-host', name: 'RakkoWorkPlace-Next Shell Host', icon: 'Home', pid: 104 },
         { id: 'notification-broker', name: 'Notification Broker Service', icon: 'Notification Bell', pid: 216 },
         { id: 'window-composition', name: 'Window Composition Service', icon: 'Layout Grid', pid: 328 },
         { id: 'state-persistence', name: 'State Persistence Service', icon: 'Database 2', pid: 412 },

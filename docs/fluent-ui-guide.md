@@ -2,7 +2,7 @@
 
 [简体中文](fluent-ui-guide.md) | [English](fluent-ui-guide-en.md)
 
-本文说明 FluentOS-On-Web 2.0 的视觉基础、`FluentUI` 组件工厂与 `FluentWindow` 应用框架。所有接口均来自当前的 `js/core/fluent-ui.js`、`js/core/fluent-window.js` 和对应 CSS。
+本文说明 RakkoWorkPlace-Next 的视觉基础、`FluentUI` 组件工厂与 `FluentWindow` 应用框架。所有接口均来自当前的 `js/core/fluent-ui.js`、`js/core/fluent-window.js` 和对应 CSS。
 
 架构与应用注册流程见[开发者指南](DEVELOPER_GUIDE.md)。
 

@@ -1,8 +1,8 @@
-# FluentOS-On-Web 2.0 开发者指南
+# RakkoWorkPlace-Next 开发者指南
 
 [简体中文](DEVELOPER_GUIDE.md) | [English](DEVELOPER_GUIDE_EN.md)
 
-本文面向需要理解、调试或扩展 FluentOS-On-Web 的开发者。当前代码是传统浏览器脚本架构：没有 npm 运行时依赖、ES Module、构建产物或前端框架，模块通过 `index.html` 按顺序加载并把对象放到全局作用域。
+本文面向需要理解、调试或扩展 RakkoWorkPlace-Next 的开发者。当前代码是传统浏览器脚本架构：没有 npm 运行时依赖、ES Module、构建产物或前端框架，模块通过 `index.html` 按顺序加载并把对象放到全局作用域。
 
 使用说明见[项目 README](../README.md)，视觉和组件细节见 [Fluent UI 指南](fluent-ui-guide.md)。
 
@@ -357,7 +357,7 @@ PWALoader.register({
 
 只有与源码目录中的 ID 和 URL 精确匹配的目录条目，以及在 Developer Center 中声明并获批 `storage.local` 权限的 PWA，才会在 iframe sandbox 中获得 `allow-same-origin`。这让 PWA 能使用其网站来源自己的 `localStorage`、登录态等同源数据。其他 PWA 使用不含 `allow-same-origin` 的不透明来源；直接调用 `PWALoader.register()` 不能扩大该权限。
 
-通过安装包分发、并申请 `storage.local` 的跨域 PWA，必须实现 Fluent OS 存储握手，以便“设置 > 应用程序”统计真实数据，并在卸载前清空该网站来源的 `localStorage`。务必将 `FLUENT_OS_ORIGIN` 固定为实际部署 Fluent OS 的可信来源，不能使用 `*`：
+通过安装包分发、并申请 `storage.local` 的跨域 PWA，必须实现 RakkoWorkPlace-Next 存储握手，以便“设置 > 应用程序”统计真实数据，并在卸载前清空该网站来源的 `localStorage`。务必将 `FLUENT_OS_ORIGIN` 固定为实际部署 RakkoWorkPlace-Next 的可信来源，不能使用 `*`：
 
 ```javascript
 const FLUENT_OS_ORIGIN = 'https://your-fluent-os.example';
@@ -409,7 +409,7 @@ window.addEventListener('message', async (event) => {
 });
 ```
 
-统计值使用该来源的浏览器存储估算，覆盖 Local Storage、IndexedDB、Cache Storage、OPFS 等浏览器管理的数据，并统一计入“应用数据”。App 如果长期持有 IndexedDB 连接，应监听 `fluentos:before-storage-clear` 并先关闭连接。不支持握手协议的 PWA 仍可正常卸载，但网站来源数据会保留；已确认支持协议后，若正式清理超时或失败，Fluent OS 会取消卸载。
+统计值使用该来源的浏览器存储估算，覆盖 Local Storage、IndexedDB、Cache Storage、OPFS 等浏览器管理的数据，并统一计入“应用数据”。App 如果长期持有 IndexedDB 连接，应监听 `fluentos:before-storage-clear` 并先关闭连接。不支持握手协议的 PWA 仍可正常卸载，但网站来源数据会保留；已确认支持协议后，若正式清理超时或失败，RakkoWorkPlace-Next 会取消卸载。
 
 限制必须在产品设计中明确：跨域 iframe 的 DOM 不可读取；站点可能拒绝嵌入；登录 Cookie、弹窗、下载、媒体自动播放和权限均受浏览器策略控制。后台冻结会向 iframe 发送：
 
@@ -429,7 +429,7 @@ Developer Center 封装的 App 在 sandbox iframe 中运行，只能通过注入
 
 开发者“预览”窗口使用独立的高权限配置：不会进行 FluentOS 权限认证，所有受支持的 Bridge API 均可直接调用，也会放开 iframe 对浏览器原生网络、存储、媒体等 API 的限制，便于开发调试。预览权限不会写入正式 App 的授权记录。若源码引用 FluentOS 不支持的浏览器 API，系统会在打开预览时通知开发者；这些 API 只在预览中放行，安全检查仍会阻止 App 通过封装。正式 App 始终使用上一段所述的声明、认证、白名单和沙箱规则。
 
-打包信息页可以选择是否允许其他用户解包。只有安装包声明允许解包，并且用户从 Developer Center 的“导入安装包”入口安装时，系统才会创建可查看、可编辑的源码项目；从桌面或文件 App 打开的安装包不会出现在 Developer Center。该选项控制 FluentOS 内的源码入口，不等同于加密或 DRM。
+打包信息页可以选择是否允许其他用户解包。只有安装包声明允许解包，并且用户从 Developer Center 的“导入安装包”入口安装时，系统才会创建可查看、可编辑的源码项目；从桌面或文件 App 打开的安装包不会出现在 Developer Center。该选项控制 RakkoWorkPlace-Next 内的源码入口，不等同于加密或 DRM。
 
 获得 `storage.local` 权限后，每个自建 App 的私有 `FluentOS.storage` 使用独立命名空间，并按 UTF-8 大小执行以下配额：
 

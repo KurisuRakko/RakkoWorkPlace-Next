@@ -976,8 +976,8 @@ function wBingFallbackImage() {
     const dateKey = new Date().toISOString().slice(0, 10);
     return wNormalizeBingImage({
         url: W_PHOTO_FALLBACK_IMAGE,
-        copyright: wUiText('Fluent OS \u58c1\u7eb8', 'Fluent OS wallpaper'),
-        title: wUiText('Fluent OS \u58c1\u7eb8', 'Fluent OS wallpaper'),
+        copyright: wUiText('RakkoWorkPlace-Next \u58c1\u7eb8', 'RakkoWorkPlace-Next wallpaper'),
+        title: wUiText('RakkoWorkPlace-Next \u58c1\u7eb8', 'RakkoWorkPlace-Next wallpaper'),
         startdate: dateKey.replace(/-/g, '')
     });
 }
