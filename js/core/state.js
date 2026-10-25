@@ -1037,7 +1037,12 @@ const State = {
         const lightBlur = Math.max(8, Math.round(materialBlur * 0.5));
         const smallBlur = Math.max(6, Math.round(materialBlur * 0.35));
         const wallpaper = wallpaperOverride || this.getResolvedWallpaper('desktop');
-        const safeWallpaper = String(wallpaper).replace(/\\/g, '/').replace(/"/g, '\\"');
+        // 自定义属性里的相对 URL 会按消费它的样式表为基准解析，壁纸变量被 css/ 目录下的样式表消费，故必须先转成绝对 URL。
+        let safeWallpaper = String(wallpaper).replace(/\\/g, '/');
+        try {
+            safeWallpaper = new URL(safeWallpaper, document.baseURI).href;
+        } catch (_) { }
+        safeWallpaper = safeWallpaper.replace(/"/g, '\\"');
 
         document.body.classList.remove(
             'material-gaussian',

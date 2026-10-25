@@ -1,0 +1,2042 @@
+/* 设置应用样式表：原由 SettingsApp.addStyles() 运行时注入，现改为静态样式表。 */
+.settings-app { display: flex; height: 100%; min-height: 0; overflow: hidden; }
+.settings-content { flex: 1; overflow-y: auto; padding: 40px; min-height: 100%; box-sizing: border-box; }
+.settings-section { margin-bottom: 40px; }
+.settings-section-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.settings-appearance-section > .fluent-setting-item,
+.settings-appearance-section > .settings-accent-panel {
+    margin: 0 0 10px 0;
+}
+.settings-appearance-section > .fluent-setting-item:last-child,
+.settings-appearance-section > .settings-accent-panel:last-child {
+    margin-bottom: 0;
+}
+.settings-appearance-section > .fluent-setting-item,
+.settings-appearance-section .settings-accent-entry {
+    min-height: 80px;
+    padding: 16px 20px;
+    box-sizing: border-box;
+}
+.wallpaper-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 200px)); gap: 12px; justify-content: start; transition: all 0.3s ease; }
+.wallpaper-item { width: 200px; height: 112px; border-radius: var(--radius-md); overflow: hidden; cursor: pointer; border: 3px solid transparent; transition: all 0.3s ease; position: relative; }
+.wallpaper-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+.wallpaper-item:hover img { transform: scale(1.05); }
+.wallpaper-item.selected { border-color: var(--accent); }
+.wallpaper-item.selected::after { content: '✓'; position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+
+.settings-accent-panel {
+    display: flex;
+    flex-direction: column;
+    margin: 12px 0 18px;
+}
+.settings-accent-entry {
+    margin-bottom: 0;
+}
+.settings-accent-entry.is-expanded {
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+.settings-accent-entry-swatch {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    border: 2px solid rgba(255, 255, 255, 0.72);
+    background: var(--accent);
+    background-color: var(--accent);
+    box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.1),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+.dark-mode .settings-accent-entry-swatch {
+    border-color: rgba(255, 255, 255, 0.32);
+    box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.32),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+.settings-accent-entry .expand-arrow {
+    transition: transform 360ms cubic-bezier(0.16, 1, 0.3, 1), opacity 220ms ease;
+}
+.settings-accent-entry.is-expanded .expand-arrow {
+    transform: rotate(90deg);
+}
+.settings-accent-expand-panel {
+    overflow: hidden;
+    padding: 18px 20px 22px 20px;
+    transform-origin: top center;
+    animation: settingsAccentExpand 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.settings-accent-panel.is-collapsing .settings-accent-expand-panel {
+    animation: settingsAccentCollapse 260ms cubic-bezier(0.4, 0, 0.2, 1) both;
+    pointer-events: none;
+}
+@keyframes settingsAccentExpand {
+    0% { opacity: 0; max-height: 0; transform: translateY(-12px) scaleY(0.96); filter: blur(2px); }
+    55% { opacity: 1; filter: blur(0); }
+    100% { opacity: 1; max-height: 720px; transform: translateY(0) scaleY(1); filter: blur(0); }
+}
+@keyframes settingsAccentCollapse {
+    0% { opacity: 1; max-height: 720px; transform: translateY(0) scaleY(1); filter: blur(0); }
+    100% { opacity: 0; max-height: 0; transform: translateY(-10px) scaleY(0.96); filter: blur(2px); }
+}
+.settings-accent-auto-row {
+    gap: 16px;
+}
+.settings-accent-group {
+    margin-top: 20px;
+}
+.settings-accent-group-title {
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+.settings-accent-row,
+.settings-accent-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-width: 500px;
+}
+.settings-accent-swatch {
+    width: 54px;
+    height: 54px;
+    position: relative;
+    padding: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    box-sizing: border-box;
+    border: 3px solid transparent;
+    border-radius: 8px;
+    background: var(--swatch-color) !important;
+    background-color: var(--swatch-color) !important;
+    background-image: none !important;
+    cursor: pointer;
+    transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms ease, border-color 180ms ease;
+}
+.settings-accent-swatch:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+}
+.settings-accent-swatch.selected {
+    border-color: var(--accent);
+    box-shadow:
+        0 0 0 1px rgba(var(--accent-rgb, 0, 120, 212), 0.2),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+}
+.settings-accent-swatch.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.22);
+    text-shadow: none;
+}
+.settings-accent-custom {
+    width: 54px;
+    height: 54px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    box-sizing: border-box;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+    cursor: pointer;
+    transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms ease, border-color 0.16s ease, background 0.16s ease;
+}
+.settings-accent-custom:hover {
+    transform: translateY(-1px);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+}
+.settings-accent-custom img {
+    width: 24px;
+    height: 24px;
+    display: block;
+}
+@media (prefers-reduced-motion: reduce) {
+    .settings-accent-expand-panel,
+    .settings-accent-panel.is-collapsing .settings-accent-expand-panel {
+        animation: none;
+    }
+    .settings-accent-entry .expand-arrow,
+    .settings-accent-swatch {
+        transition: none;
+    }
+}
+
+/* 概览页面样式 */
+.settings-overview { padding: 24px 32px; }
+.settings-overview-header { margin-bottom: 32px; }
+.settings-overview-device { display: flex; align-items: center; gap: 20px; }
+.settings-overview-wallpaper { width: 120px; height: 80px; border-radius: var(--radius-md); overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.settings-overview-wallpaper img { width: 100%; height: 100%; object-fit: cover; }
+.settings-overview-device-info h2 { margin: 0 0 4px 0; font-size: 24px; font-weight: 600; }
+.settings-overview-device-info p { margin: 0 0 8px 0; font-size: 13px; color: var(--text-secondary); }
+.settings-overview-rename { font-size: 13px; color: var(--accent); cursor: pointer; }
+.settings-overview-rename:hover { text-decoration: underline; }
+
+/* 推荐设置 */
+.settings-recommend-list { display: flex; flex-direction: column; gap: 8px; }
+.settings-recommend-item { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s ease; }
+.settings-recommend-item:hover { background: var(--bg-hover); }
+.settings-recommend-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.08); border-radius: var(--radius-sm); flex-shrink: 0; }
+.dark-mode .settings-recommend-icon { background: rgba(255,255,255,0.12); }
+.settings-recommend-icon img { width: 22px; height: 22px; filter: brightness(0); }
+.dark-mode .settings-recommend-icon img { filter: brightness(0) invert(1); }
+.settings-recommend-text { flex: 1; }
+.settings-recommend-text h4 { margin: 0 0 2px 0; font-size: 14px; font-weight: 600; }
+.settings-recommend-text p { margin: 0; font-size: 12px; color: var(--text-secondary); }
+.settings-recommend-arrow { width: 16px; height: 16px; opacity: 0.5; }
+
+/* 最近设置 */
+.settings-recent-list { display: flex; flex-direction: column; gap: 4px; }
+.settings-recent-item { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); cursor: pointer; transition: all 0.3s ease; }
+.settings-recent-item:hover { background: var(--bg-hover); }
+.settings-recent-info { display: flex; gap: 12px; align-items: center; }
+.settings-recent-label { font-size: 13px; font-weight: 500; }
+.settings-recent-value { font-size: 13px; color: var(--text-secondary); }
+.settings-recent-time { font-size: 12px; color: var(--text-tertiary); }
+
+/* 设置项高亮动画 */
+.fluent-setting-item.highlight { background: rgba(var(--accent-rgb, 0, 120, 212), 0.15) !important; transition: background 0.3s ease; }
+.fluent-setting-item.highlight-fade { background: transparent !important; transition: background 0.5s ease; }
+.fluent-setting-item.highlight-soft-blue { background: rgba(var(--accent-rgb, 0, 120, 212), 0.24) !important; transition: background 0.2s ease; }
+.fluent-setting-item.highlight-soft-blue-fade { background: transparent !important; transition: background 0.3s ease; }
+body.fluent-v2 .fluent-setting-item.highlight-soft-blue {
+    background: rgba(var(--accent-rgb, 0, 120, 212), 0.32) !important;
+    border-color: rgba(var(--accent-rgb, 0, 120, 212), 0.62) !important;
+    box-shadow: 0 0 0 1px rgba(var(--accent-rgb, 0, 120, 212), 0.32), 0 8px 22px rgba(var(--accent-rgb, 0, 120, 212), 0.2) !important;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+body.fluent-v2.dark-mode .fluent-setting-item.highlight-soft-blue {
+    background: rgba(var(--accent-rgb, 0, 120, 212), 0.28) !important;
+    border-color: rgba(var(--accent-rgb, 0, 120, 212), 0.68) !important;
+    box-shadow: 0 0 0 1px rgba(var(--accent-rgb, 0, 120, 212), 0.42), 0 10px 24px rgba(var(--accent-rgb, 0, 120, 212), 0.28) !important;
+}
+body.fluent-v2 .fluent-setting-item.highlight-soft-blue-fade {
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.settings-fingo-custom-options {
+    overflow: hidden;
+    transform-origin: top center;
+}
+.settings-fingo-custom-options .fluent-setting-item {
+    --fingo-stagger-index: 0;
+}
+.settings-fingo-custom-options.anim-in {
+    animation: fingoCustomSlideIn 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.settings-fingo-custom-options.anim-out {
+    animation: fingoCustomSlideOut 420ms cubic-bezier(0.4, 0, 0.2, 1) both;
+    pointer-events: none;
+}
+.settings-fingo-custom-options.anim-in .fluent-setting-item {
+    animation: fingoCustomItemIn 520ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+    animation-delay: calc(var(--fingo-stagger-index) * 58ms);
+}
+.settings-fingo-custom-options.anim-out .fluent-setting-item {
+    animation: fingoCustomItemOut 280ms cubic-bezier(0.4, 0, 1, 1) both;
+    animation-delay: calc((2 - var(--fingo-stagger-index)) * 36ms);
+}
+
+@keyframes fingoCustomSlideIn {
+    0% { opacity: 0; transform: translateY(-20px) scaleY(0.9); filter: blur(3px); }
+    55% { opacity: 1; filter: blur(0); }
+    100% { opacity: 1; transform: translateY(0) scaleY(1); filter: blur(0); }
+}
+@keyframes fingoCustomSlideOut {
+    0% { opacity: 1; transform: translateY(0) scaleY(1); filter: blur(0); }
+    100% { opacity: 0; transform: translateY(-14px) scaleY(0.88); filter: blur(2px); }
+}
+@keyframes fingoCustomItemIn {
+    0% { opacity: 0; transform: translateX(-12px) translateY(14px) scale(0.975); }
+    100% { opacity: 1; transform: translateX(0) translateY(0) scale(1); }
+}
+@keyframes fingoCustomItemOut {
+    0% { opacity: 1; transform: translateX(0) translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateX(14px) translateY(-8px) scale(0.98); }
+}
+
+/* ========== 旧版外观统一卡片样式 ========== */
+.fluent-setting-item {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px 20px;
+    margin-bottom: 10px;
+}
+
+.dark-mode .fluent-setting-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.settings-recommend-item {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+}
+
+.dark-mode .settings-recommend-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 统一所有列表卡片间距为 10px */
+.settings-recommend-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px !important;
+}
+
+.settings-recent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px !important;
+}
+
+.network-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px !important;
+}
+
+.network-hero-card,
+.network-option-item {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+}
+
+.dark-mode .network-hero-card,
+.dark-mode .network-option-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ========== V2 统一所有设置卡片样式 ========== */
+/* 浅色模式 - 所有卡片统一透明度 */
+body.fluent-v2 .settings-recommend-item,
+body.fluent-v2 .settings-recent-item,
+body.fluent-v2 .network-hero-card,
+body.fluent-v2 .network-option-item,
+body.fluent-v2 .network-expand-panel,
+body.fluent-v2 .app-list-item,
+body.fluent-v2 .wallpaper-item,
+body.fluent-v2 .settings-overview-wallpaper,
+body.fluent-v2 .fluent-setting-item {
+    background: var(--fluent-card-bg-light, rgba(255, 255, 255, 0.55)) !important;
+    backdrop-filter: blur(var(--fluent-material-blur-light, 20px)) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(var(--fluent-material-blur-light, 20px)) saturate(150%) !important;
+    border: 1px solid var(--fluent-card-border-light, rgba(255, 255, 255, 0.3)) !important;
+    border-radius: 16px !important;
+}
+
+body.fluent-v2 .settings-recommend-item:hover,
+body.fluent-v2 .settings-recent-item:hover,
+body.fluent-v2 .network-option-item:hover,
+body.fluent-v2 .app-list-item:hover,
+body.fluent-v2 .fluent-setting-item:hover {
+    background: var(--fluent-card-bg-light-hover, rgba(255, 255, 255, 0.62)) !important;
+}
+
+body.fluent-v2 .settings-content .settings-recommend-item,
+body.fluent-v2 .settings-content .settings-recent-item,
+body.fluent-v2 .settings-content .network-hero-card,
+body.fluent-v2 .settings-content .network-option-item,
+body.fluent-v2 .settings-content .network-expand-panel,
+body.fluent-v2 .settings-content .app-list-item,
+body.fluent-v2 .settings-content .wallpaper-item,
+body.fluent-v2 .settings-content .settings-overview-wallpaper,
+body.fluent-v2 .settings-content .fluent-setting-item {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: var(--fluent-card-bg-light, rgba(255, 255, 255, 0.55)) !important;
+    background-image: none !important;
+}
+
+body.fluent-v2 .settings-content.fluent-scroll-hover-locked .settings-recommend-item:hover,
+body.fluent-v2 .settings-content.fluent-scroll-hover-locked .settings-recent-item:hover,
+body.fluent-v2 .settings-content.fluent-scroll-hover-locked .network-option-item:hover,
+body.fluent-v2 .settings-content.fluent-scroll-hover-locked .network-expand-panel:hover,
+body.fluent-v2 .settings-content.fluent-scroll-hover-locked .app-list-item:hover,
+body.fluent-v2 .settings-content.fluent-scroll-hover-locked .wallpaper-item:hover,
+body.fluent-v2 .settings-content.fluent-scroll-hover-locked .settings-overview-wallpaper:hover,
+body.fluent-v2 .settings-content.fluent-scroll-hover-locked .fluent-setting-item:hover {
+    background-color: var(--fluent-card-bg-light, rgba(255, 255, 255, 0.55)) !important;
+}
+
+/* 深色模式 - 所有卡片统一透明度 */
+body.fluent-v2.dark-mode .settings-recommend-item,
+body.fluent-v2.dark-mode .settings-recent-item,
+body.fluent-v2.dark-mode .network-hero-card,
+body.fluent-v2.dark-mode .network-option-item,
+body.fluent-v2.dark-mode .network-expand-panel,
+body.fluent-v2.dark-mode .app-list-item,
+body.fluent-v2.dark-mode .wallpaper-item,
+body.fluent-v2.dark-mode .settings-overview-wallpaper,
+body.fluent-v2.dark-mode .fluent-setting-item {
+    background: var(--fluent-card-bg-dark, rgba(24, 28, 36, 0.48)) !important;
+    border-color: var(--fluent-card-border-dark, rgba(255, 255, 255, 0.1)) !important;
+}
+
+body.fluent-v2.dark-mode .settings-recommend-item:hover,
+body.fluent-v2.dark-mode .settings-recent-item:hover,
+body.fluent-v2.dark-mode .network-option-item:hover,
+body.fluent-v2.dark-mode .app-list-item:hover,
+body.fluent-v2.dark-mode .fluent-setting-item:hover {
+    background: var(--fluent-card-bg-dark-hover, rgba(34, 40, 52, 0.58)) !important;
+}
+
+body.fluent-v2.dark-mode .settings-content .settings-recommend-item,
+body.fluent-v2.dark-mode .settings-content .settings-recent-item,
+body.fluent-v2.dark-mode .settings-content .network-hero-card,
+body.fluent-v2.dark-mode .settings-content .network-option-item,
+body.fluent-v2.dark-mode .settings-content .network-expand-panel,
+body.fluent-v2.dark-mode .settings-content .app-list-item,
+body.fluent-v2.dark-mode .settings-content .wallpaper-item,
+body.fluent-v2.dark-mode .settings-content .settings-overview-wallpaper,
+body.fluent-v2.dark-mode .settings-content .fluent-setting-item {
+    background-color: var(--fluent-card-bg-dark, rgba(24, 28, 36, 0.48)) !important;
+    background-image: none !important;
+}
+
+body.fluent-v2.dark-mode .settings-content.fluent-scroll-hover-locked .settings-recommend-item:hover,
+body.fluent-v2.dark-mode .settings-content.fluent-scroll-hover-locked .settings-recent-item:hover,
+body.fluent-v2.dark-mode .settings-content.fluent-scroll-hover-locked .network-option-item:hover,
+body.fluent-v2.dark-mode .settings-content.fluent-scroll-hover-locked .network-expand-panel:hover,
+body.fluent-v2.dark-mode .settings-content.fluent-scroll-hover-locked .app-list-item:hover,
+body.fluent-v2.dark-mode .settings-content.fluent-scroll-hover-locked .wallpaper-item:hover,
+body.fluent-v2.dark-mode .settings-content.fluent-scroll-hover-locked .settings-overview-wallpaper:hover,
+body.fluent-v2.dark-mode .settings-content.fluent-scroll-hover-locked .fluent-setting-item:hover {
+    background-color: var(--fluent-card-bg-dark, rgba(24, 28, 36, 0.48)) !important;
+}
+
+body.fluent-v2.window-blur-disabled .settings-app,
+body.fluent-v2.window-blur-disabled .settings-content {
+    background: var(--bg-primary) !important;
+    background-color: var(--bg-primary) !important;
+}
+
+body.fluent-v2.window-blur-disabled .settings-section,
+body.fluent-v2.window-blur-disabled .settings-content > div:not(.fluent-setting-item):not(.settings-recommend-item):not(.settings-recent-item):not(.network-hero-card):not(.network-option-item):not(.network-expand-panel):not(.wallpaper-item):not(.settings-overview-wallpaper):not(.settings-secondary-topbar),
+body.fluent-v2.window-blur-disabled .wallpaper-grid {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+body.fluent-v2.window-blur-disabled .settings-recommend-item,
+body.fluent-v2.window-blur-disabled .settings-recent-item,
+body.fluent-v2.window-blur-disabled .network-hero-card,
+body.fluent-v2.window-blur-disabled .network-option-item,
+body.fluent-v2.window-blur-disabled .network-expand-panel,
+body.fluent-v2.window-blur-disabled .fluent-setting-item {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+}
+
+body.fluent-v2.window-blur-disabled .settings-recommend-item:hover,
+body.fluent-v2.window-blur-disabled .settings-recent-item:hover,
+body.fluent-v2.window-blur-disabled .network-option-item:hover,
+body.fluent-v2.window-blur-disabled .network-expand-panel:hover,
+body.fluent-v2.window-blur-disabled .fluent-setting-item:hover {
+    background: var(--bg-hover) !important;
+}
+
+/* V2模式下统一卡片间距 */
+body.fluent-v2 .settings-recommend-list { gap: 8px; }
+body.fluent-v2 .settings-recent-list { gap: 8px; }
+body.fluent-v2 .network-options-list { gap: 8px; }
+
+/* 网络页面样式 */
+.settings-network { padding: 24px 32px; }
+.network-hero-card { display: flex; align-items: center; gap: 20px; padding: 24px 32px; background: var(--bg-tertiary); border-radius: var(--radius-lg); margin-bottom: 16px; }
+.network-hero-icon { width: 72px; height: 72px; display: flex; align-items: center; justify-content: center; background: transparent; border-radius: var(--radius-md); }
+.network-hero-icon img { width: 52px; height: 52px; opacity: 0.8; }
+.dark-mode .network-hero-icon img { filter: brightness(0) invert(1); }
+.network-hero-info { flex: 1; }
+.network-hero-info h2 { margin: 0 0 8px 0; font-size: 20px; font-weight: 600; }
+.network-hero-status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+.network-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #9e9e9e; }
+.network-status-dot.connected { background: #00c853; }
+.network-hero-actions { display: flex; gap: 16px; }
+.network-hero-link { font-size: 13px; color: var(--accent); cursor: pointer; }
+.network-hero-link:hover { text-decoration: underline; }
+
+.network-options-list { display: flex; flex-direction: column; gap: 8px; }
+.network-option-item { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s ease; }
+.network-option-item:hover { background: var(--bg-hover); }
+.network-option-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+.network-option-icon img { width: 24px; height: 24px; opacity: 0.8; transition: all 0.3s ease; }
+.network-option-icon.bluetooth-icon.disabled img { opacity: 0.4; }
+.network-option-info { flex: 1; }
+.network-option-info h4 { margin: 0 0 2px 0; font-size: 14px; font-weight: 500; }
+.network-option-info p { margin: 0; font-size: 12px; color: var(--text-secondary); }
+.network-option-arrow { width: 16px; height: 16px; opacity: 0.5; transition: transform 0.3s ease; }
+.network-option-expandable .expand-arrow { }
+
+.network-expand-panel { padding: 16px 20px 16px 76px; background: var(--bg-tertiary); border-radius: 0 0 var(--radius-md) var(--radius-md); margin-top: -2px; animation: expandDown 0.2s ease; }
+@keyframes expandDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+.network-expand-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+.network-expand-row:last-child { border-bottom: none; }
+.network-expand-row span { font-size: 14px; }
+
+.network-device-list { margin-top: 16px; }
+.network-device-empty { text-align: center; padding: 32px 16px; }
+.network-device-empty img { width: 48px; height: 48px; opacity: 0.3; margin-bottom: 12px; }
+.network-device-empty p { margin: 0 0 4px 0; font-size: 14px; color: var(--text-secondary); }
+.network-device-empty span { font-size: 12px; color: var(--text-tertiary); }
+
+/* V2网络展开面板 */
+body.fluent-v2 .network-expand-panel {
+    background: var(--fluent-card-bg-light, rgba(255, 255, 255, 0.55)) !important;
+    border: 1px solid var(--fluent-card-border-light, rgba(255, 255, 255, 0.3)) !important;
+    border-radius: 0 0 16px 16px !important;
+}
+body.fluent-v2.dark-mode .network-expand-panel {
+    background: var(--fluent-card-bg-dark, rgba(24, 28, 36, 0.48)) !important;
+    border-color: var(--fluent-card-border-dark, rgba(255, 255, 255, 0.1)) !important;
+}
+
+/* 应用程序页面样式 */
+.storage-card-content {
+    width: 100%;
+}
+
+.storage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.storage-title {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.storage-usage {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.storage-bar-wrapper {
+    height: 10px;
+    background: #d3d3d3;
+    border-radius: 5px;
+    overflow: hidden;
+    display: flex;
+    margin-bottom: 14px;
+}
+
+.dark-mode .storage-bar-wrapper {
+    background: #5a5a5a;
+}
+
+.storage-bar-fill.apps {
+    background: linear-gradient(90deg, #ff6b6b, #ff8787) !important;
+    height: 100%;
+}
+
+.storage-bar-fill.core { background: #68768a !important; height: 100%; }
+.storage-bar-fill.resources { background: #5b8def !important; height: 100%; }
+.storage-bar-fill.other { background: #f2b134 !important; height: 100%; }
+.storage-bar-fill.overhead { background: #9b6bd3 !important; height: 100%; }
+
+body.fluent-v2 .storage-bar-wrapper {
+    background: #d3d3d3 !important;
+}
+
+body.fluent-v2.dark-mode .storage-bar-wrapper {
+    background: #5a5a5a !important;
+}
+
+.storage-legend {
+    display: flex;
+    gap: 10px 18px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.storage-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.storage-legend-item strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    min-width: 10px;
+    min-height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+.legend-dot-apps { background-color: #ff6b6b !important; }
+.legend-dot-core { background-color: #68768a !important; }
+.legend-dot-resources { background-color: #5b8def !important; }
+.legend-dot-other { background-color: #f2b134 !important; }
+.legend-dot-overhead { background-color: #9b6bd3 !important; }
+.legend-dot-available {
+    background-color: #d3d3d3 !important;
+    border: 1px solid var(--border-color);
+}
+
+.dark-mode .legend-dot-available {
+    background-color: #5a5a5a !important;
+}
+
+.apps-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 24px 0 12px;
+    padding: 0 4px;
+}
+
+.apps-list-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.apps-sort-btn {
+    font-size: 13px;
+    color: var(--accent);
+    cursor: pointer;
+    user-select: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: transparent;
+    transition: background 0.15s ease;
+}
+
+.apps-sort-btn:hover {
+    background: rgba(var(--accent-rgb, 0, 120, 212), 0.1);
+}
+
+.apps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.app-list-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 16px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.app-list-item:hover {
+    background: var(--bg-hover);
+}
+
+.dark-mode .app-list-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.app-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.app-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.app-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.app-name {
+    font-size: 15px;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.app-meta {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.app-size {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-right: 8px;
+}
+
+.app-arrow {
+    width: 16px;
+    height: 16px;
+    opacity: 0.4;
+}
+
+.app-arrow img {
+    width: 100%;
+    height: 100%;
+}
+
+.dark-mode .app-arrow img {
+    filter: brightness(0) invert(1);
+}
+
+/* 应用详情样式 */
+.app-detail-content {
+    min-width: 320px;
+}
+
+.app-detail-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.app-detail-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    object-fit: cover;
+}
+
+.app-detail-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.app-detail-name {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.app-detail-type {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.app-detail-size {
+    font-size: 13px;
+    color: var(--text-tertiary);
+}
+
+.app-detail-desc {
+    margin-bottom: 20px;
+}
+
+.app-detail-desc-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.app-detail-desc p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+.app-detail-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.app-detail-actions .fluent-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+}
+
+.app-detail-actions .fluent-button img {
+    width: 16px;
+    height: 16px;
+}
+
+.fluent-button-danger {
+    background: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: white !important;
+}
+
+.fluent-button-danger:hover {
+    background: #c82333 !important;
+}
+
+.fluent-button-disabled {
+    background: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-tertiary) !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+.fluent-button-disabled img {
+    opacity: 0.5;
+}
+
+/* V2 应用列表样式 */
+body.fluent-v2 .app-list-item {
+    background: rgba(255, 255, 255, 0.55) !important;
+    backdrop-filter: blur(var(--fluent-material-blur-light, 20px)) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(var(--fluent-material-blur-light, 20px)) saturate(150%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 16px !important;
+}
+
+body.fluent-v2 .app-list-item:hover {
+    background: var(--fluent-card-bg-light-hover, rgba(255, 255, 255, 0.62)) !important;
+}
+
+body.fluent-v2.dark-mode .app-list-item {
+    background: var(--fluent-card-bg-dark, rgba(24, 28, 36, 0.48)) !important;
+    border-color: var(--fluent-card-border-dark, rgba(255, 255, 255, 0.1)) !important;
+}
+
+body.fluent-v2.dark-mode .app-list-item:hover {
+    background: var(--fluent-card-bg-dark-hover, rgba(34, 40, 52, 0.58)) !important;
+}
+
+body.fluent-v2 .apps-list {
+    gap: 10px;
+}
+
+/* V2 模式统一卡片间距 */
+body.fluent-v2 .settings-recommend-list,
+body.fluent-v2 .settings-recent-list,
+body.fluent-v2 .network-options {
+    gap: 10px !important;
+}
+
+/* 应用详情页样式 */
+.app-detail-page {
+    max-width: 100%;
+}
+
+.app-detail-page .fluent-setting-item {
+    margin-bottom: 10px;
+}
+
+.dark-mode .app-detail-page .fluent-setting-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 存储卡片内容 */
+.storage-card-content {
+    width: 100%;
+}
+
+/* V2 模式下应用详情页卡片样式 */
+body.fluent-v2 .app-detail-page .fluent-setting-item {
+    background: var(--fluent-card-bg-light, rgba(255, 255, 255, 0.55)) !important;
+    backdrop-filter: blur(var(--fluent-material-blur-light, 20px)) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(var(--fluent-material-blur-light, 20px)) saturate(150%) !important;
+    border: 1px solid var(--fluent-card-border-light, rgba(255, 255, 255, 0.3)) !important;
+    border-radius: 16px !important;
+}
+
+body.fluent-v2.dark-mode .app-detail-page .fluent-setting-item {
+    background: var(--fluent-card-bg-dark, rgba(24, 28, 36, 0.48)) !important;
+    border-color: var(--fluent-card-border-dark, rgba(255, 255, 255, 0.1)) !important;
+}
+
+.settings-content.settings-secondary-page {
+    overflow: visible;
+}
+
+.settings-secondary-topbar {
+    --settings-secondary-bar-solid: #fff;
+    --settings-secondary-bar-90: rgba(255, 255, 255, .9);
+    --settings-secondary-bar-45: rgba(255, 255, 255, .45);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: flex-start;
+    min-height: 92px;
+    margin: -32px -32px -4px;
+    padding: 32px 32px 12px;
+    box-sizing: border-box;
+    overflow: visible;
+    pointer-events: none;
+    background-color: transparent !important;
+    background-image: none !important;
+}
+
+.dark-mode .settings-secondary-topbar {
+    --settings-secondary-bar-solid: #000;
+    --settings-secondary-bar-90: rgba(0, 0, 0, .9);
+    --settings-secondary-bar-45: rgba(0, 0, 0, .45);
+}
+
+.settings-secondary-topbar::before {
+    content: '';
+    position: absolute;
+    inset: -10px -10px auto;
+    z-index: 1;
+    height: 20px;
+    background: var(--settings-secondary-bar-solid);
+    pointer-events: none;
+}
+
+.settings-secondary-topbar::after {
+    content: '';
+    position: absolute;
+    inset: -10px -10px 0;
+    z-index: 0;
+    background: linear-gradient(
+        to bottom,
+        var(--settings-secondary-bar-solid) 0%,
+        var(--settings-secondary-bar-solid) 34%,
+        var(--settings-secondary-bar-90) 52%,
+        var(--settings-secondary-bar-45) 76%,
+        transparent 100%
+    );
+    pointer-events: none;
+}
+
+.settings-secondary-topbar .settings-secondary-back-button {
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
+    flex: 0 0 auto;
+}
+
+/* 页面切换动画 */
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutToRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+.app-detail-page {
+    animation: aboutChangelogEnter 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.app-detail-page.slide-out {
+    animation: aboutChangelogExit 260ms cubic-bezier(0.4, 0, 1, 1) both;
+    pointer-events: none;
+}
+
+.app-detail-info-card {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+}
+
+.app-detail-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.app-detail-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.app-detail-name {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.app-detail-version {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.app-detail-developer {
+    font-size: 13px;
+    color: var(--text-tertiary);
+}
+
+.app-storage-info {
+    width: 100%;
+}
+
+.app-storage-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    font-size: 14px;
+}
+
+.app-storage-row span:last-child {
+    color: var(--text-secondary);
+}
+
+.app-storage-divider {
+    height: 1px;
+    background: var(--border-color);
+}
+
+.app-desc-card {
+    width: 100%;
+}
+
+.app-desc-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+.app-desc-text {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+.settings-static-card,
+.settings-static-card:hover,
+body.fluent-v2 .settings-static-card:hover,
+body.fluent-v2.dark-mode .settings-static-card:hover {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    color: var(--text-primary) !important;
+}
+
+body.fluent-v2 .settings-content .settings-static-card:hover {
+    background-color: var(--fluent-card-bg-light, rgba(255, 255, 255, 0.55)) !important;
+    background-image: none !important;
+}
+
+body.fluent-v2.dark-mode .settings-content .settings-static-card:hover {
+    background-color: var(--fluent-card-bg-dark, rgba(24, 28, 36, 0.48)) !important;
+}
+
+.app-action-host {
+    width: 100%;
+}
+
+.app-detail-action {
+    width: 100%;
+    min-height: 52px;
+    justify-content: center;
+    border-radius: var(--radius-md, 12px);
+}
+
+.app-storage-total {
+    font-weight: 600;
+}
+
+.app-action-desc {
+    margin: 8px 16px 16px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+}
+
+.app-action-desc-danger {
+    color: #dc3545;
+}
+
+.settings-user-profile-card {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 18px;
+}
+
+.settings-user-avatar-preview {
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    border: 2px solid var(--border-color);
+    flex-shrink: 0;
+    background: var(--bg-secondary);
+}
+
+.settings-user-avatar-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.settings-user-profile-text {
+    min-width: 0;
+    flex: 1;
+    text-align: left;
+}
+
+.settings-user-profile-name {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.settings-user-profile-email {
+    font-size: 13px;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.settings-about-hero-card {
+    min-height: 146px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    overflow: hidden;
+    position: relative;
+    padding: 24px 28px;
+    box-sizing: border-box;
+    isolation: isolate;
+    animation: aboutCardEnter 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* The hero participates in the system-wide pointer glow API. */
+body.button-glow-enabled .settings-about-hero-card.button-glow-target > .button-edge-glow {
+    width: 280px;
+    height: 280px;
+    z-index: 10;
+    filter: blur(12px);
+}
+
+body.button-glow-enabled .settings-about-hero-card.button-glow-target > .button-glow-ripple {
+    z-index: 9;
+}
+
+.settings-about-landscape {
+    position: absolute;
+    inset: -1px;
+    z-index: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    background: #d5d9dc;
+    pointer-events: none;
+}
+
+.settings-about-landscape::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 9;
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.18) 44%, rgba(255, 255, 255, 0.02)),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 64%);
+}
+
+.dark-mode .settings-about-landscape {
+    background: #1f2630;
+}
+
+.dark-mode .settings-about-landscape::after {
+    background:
+        linear-gradient(90deg, rgba(12, 16, 24, 0.36), rgba(12, 16, 24, 0.24) 46%, rgba(12, 16, 24, 0.08)),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01) 64%);
+}
+
+.settings-about-landscape-layer {
+    position: absolute;
+    left: 0;
+    display: block;
+    pointer-events: none;
+    user-select: none;
+    object-fit: fill;
+    transform-origin: center bottom;
+}
+
+.settings-about-landscape-sky {
+    z-index: 1;
+    inset: -1px;
+    width: calc(100% + 2px);
+    height: calc(100% + 2px);
+    animation: aboutLandscapeSkyEnter 920ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-about-landscape-water-base {
+    z-index: 2;
+    left: -1px;
+    bottom: -1px;
+    width: calc(100% + 2px);
+    height: 30%;
+    animation: aboutLandscapeWaterEnter 760ms 110ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-about-landscape-reflection {
+    z-index: 3;
+    left: -1px;
+    bottom: -1px;
+    width: 100%;
+    height: 30%;
+    transform-origin: left center;
+    animation: aboutLandscapeReflectionEnter 820ms 190ms cubic-bezier(0.2, 0.82, 0.22, 1) both;
+}
+
+.settings-about-landscape-mountain-middle {
+    z-index: 4;
+    left: -1px;
+    bottom: 29.4%;
+    width: 98.5%;
+    height: 32.21%;
+    animation: aboutLandscapeMiddleEnter 880ms 230ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-about-landscape-mountain-dark {
+    z-index: 5;
+    left: 4.5%;
+    bottom: 29.4%;
+    width: 102%;
+    height: 32.21%;
+    animation: aboutLandscapePeaksEnter 920ms 310ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-about-landscape-land {
+    z-index: 6;
+    left: 5%;
+    bottom: -1px;
+    width: 100%;
+    height: 30%;
+    animation: aboutLandscapeLandEnter 820ms 390ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-about-landscape-trees {
+    z-index: 7;
+    left: 23.56%;
+    bottom: 28.64%;
+    width: 76.44%;
+    height: 11.76%;
+    animation: aboutLandscapeTreesEnter 760ms 470ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-about-brand {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    min-width: 0;
+    color: #1d1d1f;
+}
+
+.dark-mode .settings-about-brand {
+    color: rgba(255, 255, 255, 0.94);
+}
+
+.settings-about-brand-logo {
+    width: clamp(96px, 11.5vw, 118px);
+    height: clamp(96px, 11.5vw, 118px);
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    box-shadow: none;
+    animation: aboutBrandLogoEnter 760ms 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-about-brand-logo img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+    filter: drop-shadow(0 10px 22px rgba(17, 31, 52, 0.18));
+}
+
+.settings-about-logo-dark { display: none !important; }
+.dark-mode .settings-about-logo-light { display: none !important; }
+.dark-mode .settings-about-logo-dark { display: block !important; }
+
+.settings-about-brand-name {
+    font-size: clamp(38px, 6vw, 54px);
+    font-weight: 760;
+    line-height: 1;
+    letter-spacing: -0.045em;
+    text-shadow: 0 10px 28px rgba(255, 255, 255, 0.4);
+    animation: aboutBrandNameEnter 760ms 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.dark-mode .settings-about-brand-name {
+    text-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
+}
+
+.settings-about-card-codename {
+    position: absolute;
+    right: 24px;
+    bottom: 18px;
+    z-index: 2;
+    max-width: min(320px, calc(100% - 48px));
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 13px;
+    font-weight: 650;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.36);
+    animation: aboutCodenameEnter 620ms 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-about-hero-text {
+    min-width: 0;
+    text-align: left;
+    animation: aboutTextEnter 640ms 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-about-hero-kicker {
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 760;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.settings-about-hero-name {
+    font-size: 40px;
+    font-weight: 750;
+    line-height: 1;
+    margin: 0;
+}
+
+.settings-about-hero-meta {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.settings-about-version-pill {
+    justify-self: start;
+    margin-top: 6px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    background: rgba(var(--accent-rgb, 0, 120, 212), 0.1);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+
+.settings-about-meta-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    animation: aboutCardEnter 560ms 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-about-meta-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.settings-about-meta-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    min-width: 84px;
+}
+
+.settings-about-meta-value {
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.settings-about-meta-link {
+    font-size: 14px;
+    color: var(--accent);
+    text-decoration: none;
+    word-break: break-all;
+}
+
+.settings-about-meta-link:hover {
+    text-decoration: underline;
+}
+
+.settings-about-list {
+    animation: aboutCardEnter 560ms 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-about-list .fluent-list-item[data-id="changelog"] {
+    cursor: pointer;
+    background: rgba(var(--accent-rgb, 0, 120, 212), 0.075);
+}
+
+.settings-about-list .fluent-list-item[data-id="changelog"]:hover {
+    background: rgba(var(--accent-rgb, 0, 120, 212), 0.14);
+}
+
+.settings-about-list .fluent-list-item-extra {
+    font-size: 20px;
+    color: var(--accent);
+}
+
+.settings-changelog-page {
+    animation: aboutChangelogEnter 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-material-page {
+    animation: aboutChangelogEnter 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-material-page.slide-out {
+    animation: aboutChangelogExit 260ms cubic-bezier(0.4, 0, 1, 1) both;
+    pointer-events: none;
+}
+
+.settings-changelog-page.slide-out {
+    animation: aboutChangelogExit 260ms cubic-bezier(0.4, 0, 1, 1) both;
+    pointer-events: none;
+}
+
+.settings-changelog-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.settings-changelog-title {
+    margin: 0;
+    font-size: 28px;
+    line-height: 1.15;
+}
+
+.settings-changelog-subtitle {
+    margin: 6px 0 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.settings-changelog-count {
+    flex-shrink: 0;
+    padding: 6px 11px;
+    border-radius: 999px;
+    background: rgba(var(--accent-rgb, 0, 120, 212), 0.1);
+    color: var(--accent);
+    font-size: 12px;
+}
+
+.settings-changelog-timeline {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-left: 18px;
+}
+
+.settings-changelog-timeline::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 18px;
+    bottom: 18px;
+    width: 2px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, var(--accent), rgba(var(--accent-rgb, 0, 120, 212), 0.12));
+}
+
+.settings-changelog-entry {
+    position: relative;
+    margin-bottom: 0;
+    animation: aboutLogItemEnter 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: min(calc(var(--log-index) * 42ms), 420ms);
+}
+
+.settings-changelog-entry::before {
+    content: '';
+    position: absolute;
+    left: -20px;
+    top: 23px;
+    width: 10px;
+    height: 10px;
+    box-sizing: border-box;
+    border-radius: 50%;
+    background: var(--bg-primary);
+    border: 3px solid var(--accent);
+    z-index: 2;
+}
+
+.settings-changelog-entry.is-baseline::before {
+    border-color: var(--text-tertiary);
+}
+
+.settings-changelog-entry-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 11px;
+}
+
+.settings-changelog-version {
+    font-size: 16px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+
+.settings-changelog-date {
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.settings-changelog-commits {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.settings-changelog-commit {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.settings-changelog-hash {
+    margin-top: 1px;
+    padding: 2px 5px;
+    border-radius: 5px;
+    background: rgba(var(--accent-rgb, 0, 120, 212), 0.09);
+    color: var(--accent);
+    font: 11px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+    text-align: center;
+}
+
+.settings-changelog-baseline {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+@keyframes aboutCardEnter {
+    from { opacity: 0; transform: translateY(18px) scale(0.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes aboutTextEnter {
+    from { opacity: 0; transform: translateX(22px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes aboutLandscapeSkyEnter {
+    from { opacity: 0; transform: scale(1.035); filter: saturate(0.82); }
+    to { opacity: 1; transform: scale(1); filter: saturate(1); }
+}
+
+@keyframes aboutLandscapeWaterEnter {
+    from { opacity: 0; transform: translateY(22px) scaleY(0.78); }
+    to { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+
+@keyframes aboutLandscapeReflectionEnter {
+    from { opacity: 0; transform: translateY(16px) scaleX(0.88); }
+    to { opacity: 1; transform: translateY(0) scaleX(1); }
+}
+
+@keyframes aboutLandscapeMiddleEnter {
+    from { opacity: 0; transform: translateY(30px) scaleY(0.76); }
+    to { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+
+@keyframes aboutLandscapePeaksEnter {
+    from { opacity: 0; transform: translateY(34px) scaleY(0.72); }
+    to { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+
+@keyframes aboutLandscapeLandEnter {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes aboutLandscapeTreesEnter {
+    from { opacity: 0; transform: translateY(16px) scaleY(0.45); }
+    to { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+
+@keyframes aboutBrandLogoEnter {
+    from { opacity: 0; transform: translateX(-22px) scale(0.86); filter: blur(4px); }
+    70% { opacity: 1; transform: translateX(2px) scale(1.035); filter: blur(0); }
+    to { opacity: 1; transform: translateX(0) scale(1); filter: blur(0); }
+}
+
+@keyframes aboutBrandNameEnter {
+    from { opacity: 0; transform: translateX(28px); filter: blur(5px); }
+    to { opacity: 1; transform: translateX(0); filter: blur(0); }
+}
+
+@keyframes aboutCodenameEnter {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes aboutChangelogEnter {
+    from { opacity: 0; transform: translateX(34px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes aboutChangelogExit {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(34px); }
+}
+
+@keyframes aboutLogItemEnter {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 900px) {
+    .settings-about-hero-card {
+        min-height: 140px;
+        padding: 22px 24px;
+    }
+
+    .settings-about-brand {
+        gap: 24px;
+    }
+}
+
+@media (max-width: 620px) {
+    .settings-about-hero-card {
+        min-height: 128px;
+        padding: 20px;
+    }
+
+    .settings-about-brand {
+        gap: 16px;
+    }
+
+    .settings-about-brand-logo {
+        width: 78px;
+        height: 78px;
+    }
+
+    .settings-about-brand-name {
+        font-size: 34px;
+    }
+
+    .settings-about-card-codename {
+        right: 18px;
+        bottom: 14px;
+        font-size: 12px;
+    }
+
+    .settings-changelog-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .settings-changelog-commit {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+
+    .settings-changelog-hash {
+        width: max-content;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-about-hero-card,
+    .settings-about-meta-card,
+    .settings-about-list,
+    .settings-about-hero-text,
+    .settings-about-landscape-layer,
+    .settings-about-brand-logo,
+    .settings-about-brand-name,
+    .settings-about-card-codename,
+    .settings-changelog-page,
+    .settings-material-page,
+    .app-detail-page,
+    .settings-changelog-entry {
+        animation: none !important;
+    }
+}
+
+.settings-user-avatar-grid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding-left: 20px;
+    margin-top: 14px;
+}
+
+.settings-user-avatar-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+
+.settings-user-avatar-item {
+    position: relative;
+    flex: 0 0 68px;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--bg-secondary);
+    border: 2px solid transparent;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.settings-user-avatar-item:hover {
+    transform: translateY(-2px);
+}
+
+.settings-user-avatar-item.selected {
+    border-color: var(--accent);
+}
+
+.settings-user-avatar-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.settings-user-save-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 8px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+
+.settings-user-danger-content {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+}
+
+.settings-user-danger-content .fluent-btn {
+    align-self: flex-end;
+}
+
+.settings-user-danger-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    width: 100%;
+    text-align: left;
+}
+
+body:not(.fluent-v2) .settings-user-danger-content .fluent-btn-danger {
+    color: #fff !important;
+}
+
+body:not(.fluent-v2) .settings-user-danger-content .fluent-btn-danger .fluent-btn-text {
+    color: #fff !important;
+}
+
+.settings-reset-warning {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+.settings-advanced-entry .fluent-setting-item-control {
+    min-width: auto;
+    display: flex;
+    align-items: center;
+}
+
+.settings-entry-arrow {
+    width: 18px;
+    height: 18px;
+    opacity: 0.62;
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.dark-mode .settings-entry-arrow {
+    filter: brightness(0) invert(1);
+}
+
+.settings-advanced-entry:hover .settings-entry-arrow {
+    opacity: 1;
+    transform: translateX(2px);
+}
+
+.settings-beta-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    margin-left: 8px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: rgba(var(--accent-rgb, 0, 120, 212), 0.14);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.settings-slider-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 260px;
+}
+
+.settings-slider-control .fluent-slider-wrapper {
+    flex: 1;
+}
+
+.settings-blur-strength-item {
+    max-height: 96px;
+    transition:
+        max-height 220ms ease,
+        margin-bottom 220ms ease,
+        padding 220ms ease,
+        opacity 160ms ease,
+        transform 220ms ease,
+        background 180ms ease;
+}
+
+.settings-mica-hidden {
+    max-height: 0;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: transparent !important;
+    border-color: transparent !important;
+    transform: translateY(-6px);
+    transition:
+        max-height 220ms ease,
+        margin-bottom 220ms ease,
+        padding 220ms ease,
+        opacity 160ms ease,
+        transform 220ms ease,
+        background 180ms ease;
+}
+
+.settings-inline-value {
+    min-width: 56px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-align: right;
+}
+
+@property --material-preview-pan-y {
+    syntax: '<percentage>';
+    inherits: true;
+    initial-value: 0%;
+}
+
+@keyframes materialPreviewWallpaperPan {
+    0%, 100% {
+        --material-preview-pan-y: 0%;
+        animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+    }
+    50% {
+        --material-preview-pan-y: 100%;
+        animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+    }
+}
+
+.material-preview {
+    --material-preview-pan-y: 0%;
+    position: relative;
+    height: 168px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    border-radius: 18px;
+    border: 1px solid var(--border-color);
+    background: linear-gradient(135deg, #d7ebff, #f8fbff 44%, #dbeafe);
+    box-shadow: var(--shadow-md);
+    animation: materialPreviewWallpaperPan 18s linear infinite;
+}
+
+.dark-mode .material-preview {
+    background: linear-gradient(135deg, #151923, #252b36 46%, #111827);
+}
+
+.material-preview-wallpaper {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 20% 25%, rgba(var(--accent-rgb, 0, 120, 212), 0.44), transparent 28%),
+        radial-gradient(circle at 78% 22%, rgba(255, 145, 77, 0.38), transparent 30%),
+        radial-gradient(circle at 52% 86%, rgba(105, 92, 255, 0.34), transparent 34%),
+        var(--fluent-wallpaper-url, linear-gradient(135deg, #d7ebff, #f8fbff));
+    background-repeat: no-repeat;
+    background-size: auto, auto, auto, cover;
+    background-position:
+        center,
+        center,
+        center,
+        center var(--material-preview-pan-y);
+}
+
+.material-preview-panel {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(320px, calc(100% - 56px));
+    padding: 24px 28px;
+    transform: translate(-50%, -50%);
+    overflow: hidden;
+    border-radius: 22px;
+    border: none;
+    background: transparent;
+    backdrop-filter: blur(var(--fluent-material-blur, 40px)) saturate(145%);
+    -webkit-backdrop-filter: blur(var(--fluent-material-blur, 40px)) saturate(145%);
+    box-shadow: 0 18px 42px rgba(24, 68, 120, 0.18);
+}
+
+.material-preview-gaussian .material-preview-panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: rgba(248, 250, 255, 0.72);
+    pointer-events: none;
+}
+
+.material-preview-mica .material-preview-panel {
+    background: #f3f3f3;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.material-preview-mica .material-preview-panel::before {
+    content: '';
+    position: absolute;
+    inset: -42px;
+    z-index: 0;
+    background:
+        var(--fluent-wallpaper-url, linear-gradient(135deg, #d7ebff, #f8fbff));
+    background-size: cover;
+    background-position: center var(--material-preview-pan-y);
+    filter: blur(24px) saturate(92%);
+    transform: scale(1.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .material-preview {
+        --material-preview-pan-y: 50%;
+        animation: none;
+    }
+}
+
+.material-preview-mica .material-preview-panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background:
+        linear-gradient(135deg, rgba(255,255,255,0.34), rgba(225,232,242,0.12)),
+        rgba(243, 246, 250, 0.84);
+    pointer-events: none;
+}
+
+.dark-mode .material-preview-panel {
+    box-shadow: 0 22px 48px rgba(0, 0, 0, 0.48);
+}
+
+.dark-mode .material-preview-gaussian .material-preview-panel::after {
+    background: rgba(10, 12, 16, 0.70);
+}
+
+.dark-mode .material-preview-mica .material-preview-panel {
+    background: #202020;
+}
+
+.dark-mode .material-preview-mica .material-preview-panel::before {
+    filter: blur(24px) saturate(88%) brightness(0.74);
+}
+
+.dark-mode .material-preview-mica .material-preview-panel::after {
+    background:
+        linear-gradient(135deg, rgba(64,69,80,0.22), rgba(0,0,0,0.20)),
+        rgba(28, 30, 35, 0.86);
+}
+
+.material-preview-title {
+    position: relative;
+    z-index: 1;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.material-preview-subtitle {
+    position: relative;
+    z-index: 1;
+    margin-top: 4px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.settings-reset-countdown {
+    margin-top: 10px;
+    color: #d13438;
+    font-weight: 600;
+}
